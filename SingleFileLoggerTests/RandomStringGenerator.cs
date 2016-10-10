@@ -65,14 +65,13 @@ namespace Tsharp
         /// </summary>
         public bool UseUpperCaseCharacters
         {
-            get
-            {
-                return m_UseUpperCaseCharacters;
-            }
+            get { return m_UseUpperCaseCharacters; }
             set
             {
-                if (CurrentUpperCaseCharacters != null) CurrentGeneralCharacters = CurrentGeneralCharacters.Except(CurrentUpperCaseCharacters).ToArray();
-                if (value) CurrentGeneralCharacters = CurrentGeneralCharacters.Concat(CurrentUpperCaseCharacters).ToArray();
+                if (CurrentUpperCaseCharacters != null)
+                    CurrentGeneralCharacters = CurrentGeneralCharacters.Except(CurrentUpperCaseCharacters).ToArray();
+                if (value)
+                    CurrentGeneralCharacters = CurrentGeneralCharacters.Concat(CurrentUpperCaseCharacters).ToArray();
                 m_UseUpperCaseCharacters = value;
             }
         }
@@ -82,15 +81,13 @@ namespace Tsharp
         /// </summary>
         public char[] UpperCaseCharacters
         {
-            get
-            {
-                return CurrentUpperCaseCharacters;
-            }
+            get { return CurrentUpperCaseCharacters; }
             set
             {
                 if (UseUpperCaseCharacters)
                 {
-                    if (CurrentUpperCaseCharacters != null) CurrentGeneralCharacters = CurrentGeneralCharacters.Except(CurrentUpperCaseCharacters).ToArray();
+                    if (CurrentUpperCaseCharacters != null)
+                        CurrentGeneralCharacters = CurrentGeneralCharacters.Except(CurrentUpperCaseCharacters).ToArray();
                     CurrentGeneralCharacters = CurrentGeneralCharacters.Concat(value).ToArray();
                 }
                 CurrentUpperCaseCharacters = value;
@@ -102,14 +99,13 @@ namespace Tsharp
         /// </summary>
         public bool UseLowerCaseCharacters
         {
-            get
-            {
-                return m_UseLowerCaseCharacters;
-            }
+            get { return m_UseLowerCaseCharacters; }
             set
             {
-                if (CurrentLowerCaseCharacters != null) CurrentGeneralCharacters = CurrentGeneralCharacters.Except(CurrentLowerCaseCharacters).ToArray();
-                if (value) CurrentGeneralCharacters = CurrentGeneralCharacters.Concat(CurrentLowerCaseCharacters).ToArray();
+                if (CurrentLowerCaseCharacters != null)
+                    CurrentGeneralCharacters = CurrentGeneralCharacters.Except(CurrentLowerCaseCharacters).ToArray();
+                if (value)
+                    CurrentGeneralCharacters = CurrentGeneralCharacters.Concat(CurrentLowerCaseCharacters).ToArray();
                 m_UseLowerCaseCharacters = value;
             }
         }
@@ -119,15 +115,13 @@ namespace Tsharp
         /// </summary>
         public char[] LowerCaseCharacters
         {
-            get
-            {
-                return CurrentLowerCaseCharacters;
-            }
+            get { return CurrentLowerCaseCharacters; }
             set
             {
                 if (UseLowerCaseCharacters)
                 {
-                    if (CurrentLowerCaseCharacters != null) CurrentGeneralCharacters = CurrentGeneralCharacters.Except(CurrentLowerCaseCharacters).ToArray();
+                    if (CurrentLowerCaseCharacters != null)
+                        CurrentGeneralCharacters = CurrentGeneralCharacters.Except(CurrentLowerCaseCharacters).ToArray();
                     CurrentGeneralCharacters = CurrentGeneralCharacters.Concat(value).ToArray();
                 }
                 CurrentLowerCaseCharacters = value;
@@ -139,14 +133,13 @@ namespace Tsharp
         /// </summary>
         public bool UseNumericCharacters
         {
-            get
-            {
-                return m_UseNumericCharacters;
-            }
+            get { return m_UseNumericCharacters; }
             set
             {
-                if (CurrentNumericCharacters != null) CurrentGeneralCharacters = CurrentGeneralCharacters.Except(CurrentNumericCharacters).ToArray();
-                if (value) CurrentGeneralCharacters = CurrentGeneralCharacters.Concat(CurrentNumericCharacters).ToArray();
+                if (CurrentNumericCharacters != null)
+                    CurrentGeneralCharacters = CurrentGeneralCharacters.Except(CurrentNumericCharacters).ToArray();
+                if (value)
+                    CurrentGeneralCharacters = CurrentGeneralCharacters.Concat(CurrentNumericCharacters).ToArray();
                 m_UseNumericCharacters = value;
             }
         }
@@ -156,15 +149,13 @@ namespace Tsharp
         /// </summary>
         public char[] NumericCharacters
         {
-            get
-            {
-                return CurrentNumericCharacters;
-            }
+            get { return CurrentNumericCharacters; }
             set
             {
                 if (UseNumericCharacters)
                 {
-                    if (CurrentNumericCharacters != null) CurrentGeneralCharacters = CurrentGeneralCharacters.Except(CurrentNumericCharacters).ToArray();
+                    if (CurrentNumericCharacters != null)
+                        CurrentGeneralCharacters = CurrentGeneralCharacters.Except(CurrentNumericCharacters).ToArray();
                     CurrentGeneralCharacters = CurrentGeneralCharacters.Concat(value).ToArray();
                 }
                 CurrentNumericCharacters = value;
@@ -176,14 +167,13 @@ namespace Tsharp
         /// </summary>
         public bool UseSpecialCharacters
         {
-            get
-            {
-                return m_UseSpecialCharacters;
-            }
+            get { return m_UseSpecialCharacters; }
             set
             {
-                if (CurrentSpecialCharacters != null) CurrentGeneralCharacters = CurrentGeneralCharacters.Except(CurrentSpecialCharacters).ToArray();
-                if (value) CurrentGeneralCharacters = CurrentGeneralCharacters.Concat(CurrentSpecialCharacters).ToArray();
+                if (CurrentSpecialCharacters != null)
+                    CurrentGeneralCharacters = CurrentGeneralCharacters.Except(CurrentSpecialCharacters).ToArray();
+                if (value)
+                    CurrentGeneralCharacters = CurrentGeneralCharacters.Concat(CurrentSpecialCharacters).ToArray();
                 m_UseSpecialCharacters = value;
             }
         }
@@ -193,15 +183,13 @@ namespace Tsharp
         /// </summary>
         public char[] SpecialCharacters
         {
-            get
-            {
-                return CurrentSpecialCharacters;
-            }
+            get { return CurrentSpecialCharacters; }
             set
             {
                 if (UseSpecialCharacters)
                 {
-                    if (CurrentSpecialCharacters != null) CurrentGeneralCharacters = CurrentGeneralCharacters.Except(CurrentSpecialCharacters).ToArray();
+                    if (CurrentSpecialCharacters != null)
+                        CurrentGeneralCharacters = CurrentGeneralCharacters.Except(CurrentSpecialCharacters).ToArray();
                     CurrentGeneralCharacters = CurrentGeneralCharacters.Concat(value).ToArray();
                 }
                 CurrentSpecialCharacters = value;
@@ -250,10 +238,7 @@ namespace Tsharp
         /// </summary>
         private string Pattern
         {
-            get
-            {
-                return m_pattern;
-            }
+            get { return m_pattern; }
             set
             {
                 if (!value.Equals(string.Empty)) PatternDriven = true;
@@ -295,7 +280,7 @@ namespace Tsharp
         public string Generate(int MinLength, int MaxLength)
         {
             if (MaxLength < MinLength) throw new ArgumentException("Maximal length should be grater than minumal");
-            var length = MinLength + this.GetRandomInt() % (MaxLength - MinLength);
+            var length = MinLength + GetRandomInt()%(MaxLength - MinLength);
             return GenerateString(length);
         }
 
@@ -317,25 +302,18 @@ namespace Tsharp
         private string GenerateString(int length)
         {
             if (length == 0) throw new ArgumentException("You can't generate a string of a zero length");
-            if (!UseUpperCaseCharacters && !UseLowerCaseCharacters && !UseNumericCharacters && !UseSpecialCharacters) throw new ArgumentException("There should be at least one character set in use");
-            if (!RepeatCharacters && (CurrentGeneralCharacters.Length < length)) throw new ArgumentException("There is not enough characters to create a string without repeats");
+            if (!UseUpperCaseCharacters && !UseLowerCaseCharacters && !UseNumericCharacters && !UseSpecialCharacters)
+                throw new ArgumentException("There should be at least one character set in use");
+            if (!RepeatCharacters && (CurrentGeneralCharacters.Length < length))
+                throw new ArgumentException("There is not enough characters to create a string without repeats");
             var result = ""; // This string will contain the result
             if (PatternDriven)
-            {
-                // Using the pattern to generate a string
                 result = PatternDrivenAlgo(Pattern);
-            }
-            else if (MinUpperCaseCharacters == 0 && MinLowerCaseCharacters == 0 && MinNumericCharacters == 0
-                     && MinSpecialCharacters == 0)
-            {
-                // Using the simpliest algorithm in this case
+            else if ((MinUpperCaseCharacters == 0) && (MinLowerCaseCharacters == 0) && (MinNumericCharacters == 0)
+                     && (MinSpecialCharacters == 0))
                 result = SimpleGenerateAlgo(length);
-            }
             else
-            {
-                // Paying attention to limits
                 result = GenerateAlgoWithLimits(length);
-            }
             // Support for unique strings
             // Recursion, but possibility of the stack overflow is low for big strings (> 3 chars).
             if (UniqueStrings && ExistingStrings.Contains(result)) return GenerateString(length);
@@ -356,34 +334,34 @@ namespace Tsharp
                 switch (character)
                 {
                     case 'L':
-                        {
-                            newChar = GetRandomCharFromArray(CurrentUpperCaseCharacters, Characters);
-                            break;
-                        }
+                    {
+                        newChar = GetRandomCharFromArray(CurrentUpperCaseCharacters, Characters);
+                        break;
+                    }
                     case 'l':
-                        {
-                            newChar = GetRandomCharFromArray(CurrentLowerCaseCharacters, Characters);
-                            break;
-                        }
+                    {
+                        newChar = GetRandomCharFromArray(CurrentLowerCaseCharacters, Characters);
+                        break;
+                    }
                     case 'n':
-                        {
-                            newChar = GetRandomCharFromArray(CurrentNumericCharacters, Characters);
-                            break;
-                        }
+                    {
+                        newChar = GetRandomCharFromArray(CurrentNumericCharacters, Characters);
+                        break;
+                    }
                     case 's':
-                        {
-                            newChar = GetRandomCharFromArray(CurrentSpecialCharacters, Characters);
-                            break;
-                        }
+                    {
+                        newChar = GetRandomCharFromArray(CurrentSpecialCharacters, Characters);
+                        break;
+                    }
                     case '*':
-                        {
-                            newChar = GetRandomCharFromArray(CurrentGeneralCharacters, Characters);
-                            break;
-                        }
+                    {
+                        newChar = GetRandomCharFromArray(CurrentGeneralCharacters, Characters);
+                        break;
+                    }
                     default:
-                        {
-                            throw new Exception("The character '" + character + "' is not supported");
-                        }
+                    {
+                        throw new Exception("The character '" + character + "' is not supported");
+                    }
                 }
                 Characters.Add(newChar);
                 result += newChar;
@@ -401,15 +379,12 @@ namespace Tsharp
             // No special limits
             for (var i = 0; i < length; i++)
             {
-                var newChar = CurrentGeneralCharacters[GetRandomInt() % CurrentGeneralCharacters.Length];
+                var newChar = CurrentGeneralCharacters[GetRandomInt()%CurrentGeneralCharacters.Length];
                 if (!RepeatCharacters && result.Contains(newChar))
-                {
                     do
                     {
-                        newChar = CurrentGeneralCharacters[GetRandomInt() % CurrentGeneralCharacters.Length];
-                    }
-                    while (result.Contains(newChar));
-                }
+                        newChar = CurrentGeneralCharacters[GetRandomInt()%CurrentGeneralCharacters.Length];
+                    } while (result.Contains(newChar));
                 result += newChar;
             }
             return result;
@@ -422,15 +397,17 @@ namespace Tsharp
         {
             // exceptional situations
             if (MinUpperCaseCharacters + MinLowerCaseCharacters + MinNumericCharacters + MinSpecialCharacters > length)
-            {
                 throw new ArgumentException(
                     "Sum of MinUpperCaseCharacters, MinLowerCaseCharacters,"
                     + " MinNumericCharacters and MinSpecialCharacters is greater than length");
-            }
-            if (!RepeatCharacters && (MinUpperCaseCharacters > CurrentUpperCaseCharacters.Length)) throw new ArgumentException("Can't generate a string with this number of MinUpperCaseCharacters");
-            if (!RepeatCharacters && (MinLowerCaseCharacters > CurrentLowerCaseCharacters.Length)) throw new ArgumentException("Can't generate a string with this number of MinLowerCaseCharacters");
-            if (!RepeatCharacters && (MinNumericCharacters > CurrentNumericCharacters.Length)) throw new ArgumentException("Can't generate a string with this number of MinNumericCharacters");
-            if (!RepeatCharacters && (MinSpecialCharacters > CurrentSpecialCharacters.Length)) throw new ArgumentException("Can't generate a string with this number of MinSpecialCharacters");
+            if (!RepeatCharacters && (MinUpperCaseCharacters > CurrentUpperCaseCharacters.Length))
+                throw new ArgumentException("Can't generate a string with this number of MinUpperCaseCharacters");
+            if (!RepeatCharacters && (MinLowerCaseCharacters > CurrentLowerCaseCharacters.Length))
+                throw new ArgumentException("Can't generate a string with this number of MinLowerCaseCharacters");
+            if (!RepeatCharacters && (MinNumericCharacters > CurrentNumericCharacters.Length))
+                throw new ArgumentException("Can't generate a string with this number of MinNumericCharacters");
+            if (!RepeatCharacters && (MinSpecialCharacters > CurrentSpecialCharacters.Length))
+                throw new ArgumentException("Can't generate a string with this number of MinSpecialCharacters");
             var AllowedNumberOfGeneralChatacters = length - MinUpperCaseCharacters - MinLowerCaseCharacters
                                                    - MinNumericCharacters - MinSpecialCharacters;
 
@@ -439,16 +416,21 @@ namespace Tsharp
             var Characters = new List<char>();
 
             // adding chars to an array
-            for (var i = 0; i < MinUpperCaseCharacters; i++) Characters.Add(GetRandomCharFromArray(UpperCaseCharacters, Characters));
-            for (var i = 0; i < MinLowerCaseCharacters; i++) Characters.Add(GetRandomCharFromArray(LowerCaseCharacters, Characters));
-            for (var i = 0; i < MinNumericCharacters; i++) Characters.Add(GetRandomCharFromArray(NumericCharacters, Characters));
-            for (var i = 0; i < MinSpecialCharacters; i++) Characters.Add(GetRandomCharFromArray(SpecialCharacters, Characters));
-            for (var i = 0; i < AllowedNumberOfGeneralChatacters; i++) Characters.Add(GetRandomCharFromArray(CurrentGeneralCharacters, Characters));
+            for (var i = 0; i < MinUpperCaseCharacters; i++)
+                Characters.Add(GetRandomCharFromArray(UpperCaseCharacters, Characters));
+            for (var i = 0; i < MinLowerCaseCharacters; i++)
+                Characters.Add(GetRandomCharFromArray(LowerCaseCharacters, Characters));
+            for (var i = 0; i < MinNumericCharacters; i++)
+                Characters.Add(GetRandomCharFromArray(NumericCharacters, Characters));
+            for (var i = 0; i < MinSpecialCharacters; i++)
+                Characters.Add(GetRandomCharFromArray(SpecialCharacters, Characters));
+            for (var i = 0; i < AllowedNumberOfGeneralChatacters; i++)
+                Characters.Add(GetRandomCharFromArray(CurrentGeneralCharacters, Characters));
 
             // generating result
             for (var i = 0; i < length; i++)
             {
-                var position = GetRandomInt() % Characters.Count;
+                var position = GetRandomInt()%Characters.Count;
                 var CurrentChar = Characters[position];
                 Characters.RemoveAt(position);
                 result += CurrentChar;
@@ -485,9 +467,8 @@ namespace Tsharp
             var Character = ' ';
             do
             {
-                Character = array[GetRandomInt() % array.Length];
-            }
-            while (!RepeatCharacters && existentItems.Contains(Character));
+                Character = array[GetRandomInt()%array.Length];
+            } while (!RepeatCharacters && existentItems.Contains(Character));
             return Character;
         }
 

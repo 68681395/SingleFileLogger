@@ -2,28 +2,28 @@
 
 namespace Tsharp
 {
-    [TestClass()]
+    [TestClass]
     public class LogSourceTests
     {
-        [TestMethod()]
+        [TestMethod]
         public void LogSourceTest()
         {
             Assert.Fail();
         }
 
-        [TestMethod()]
+        [TestMethod]
         public void LogSourceTest1()
         {
             Assert.Fail();
         }
 
-        [TestMethod()]
+        [TestMethod]
         public void DisposeTest()
         {
             Assert.Fail();
         }
 
-        [TestMethod()]
+        [TestMethod]
         public void WriteLineTest()
         {
             Assert.Fail();

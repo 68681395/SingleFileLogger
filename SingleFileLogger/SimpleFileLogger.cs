@@ -28,6 +28,13 @@ namespace Tsharp
 
     public class SimpleFileLogger
     {
+        private static LogSource source = new LogSource();
+
+        public static void WriteLine(object entry)
+        {
+            source.WriteLine(entry);
+        }
+
         /// <summary>
         ///     Defines the behavior when the roll file is created.
         /// </summary>

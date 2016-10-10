@@ -1,15 +1,14 @@
-﻿namespace Tsharp
-{
-    using System;
-    using System.Collections.Generic;
-    using System.Configuration;
-    using System.Configuration;
-    using System.Data;
-    using System.IO;
-    using System.Linq;
-    using System.Text;
+﻿using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.Data;
+using System.IO;
+using System.Linq;
+using System.Text;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-    using Microsoft.VisualStudio.TestTools.UnitTesting;
+namespace Tsharp
+{
     using static SimpleFileLogger;
 
 
@@ -121,9 +120,9 @@
         {
             var dataTable = new DataTable();
 
-            using (var reader = new CsvReader(Encoding.Default, TEST_DATA_1) { HasHeaderRow = true })
+            using (var reader = new CsvReader(Encoding.Default, TEST_DATA_1) {HasHeaderRow = true})
             {
-                dataTable = reader.ReadIntoDataTable(new[] { typeof(int), typeof(string), typeof(DateTime) });
+                dataTable = reader.ReadIntoDataTable(new[] {typeof(int), typeof(string), typeof(DateTime)});
             }
 
             var file = CreateCsvFileFromDataTable(dataTable);
@@ -135,7 +134,7 @@
         {
             var dataTable = new DataTable();
 
-            using (var reader = new CsvReader(Encoding.Default, TEST_DATA_1) { HasHeaderRow = true })
+            using (var reader = new CsvReader(Encoding.Default, TEST_DATA_1) {HasHeaderRow = true})
             {
                 dataTable = reader.ReadIntoDataTable();
             }
@@ -227,7 +226,7 @@
         [TestMethod]
         public void CsvReader_TestColumnTrimming()
         {
-            using (var reader = new CsvReader(Encoding.Default, TEST_DATA_6) { TrimColumns = true })
+            using (var reader = new CsvReader(Encoding.Default, TEST_DATA_6) {TrimColumns = true})
             {
                 var records = new List<List<string>>();
 
@@ -488,7 +487,7 @@
                     content,
                     "\"header ,1\",\"header,2\",header 3\r\n\"da,ta 1\",\"\"\"data\"\" 2\",\"data,3\"\r\n") == 0);
 
-            using (var writer = new CsvWriter { ReplaceCarriageReturnsAndLineFeedsFromFieldValues = false })
+            using (var writer = new CsvWriter {ReplaceCarriageReturnsAndLineFeedsFromFieldValues = false})
             {
                 content = writer.WriteCsv(csvFile, Encoding.Default);
             }
@@ -510,10 +509,8 @@
                 var record = new CsvRecord();
 
                 foreach (var o in row.ItemArray)
-                {
-                    if (o is DateTime) record.Fields.Add(((DateTime)o).ToString("yyyy-MM-dd hh:mm:ss"));
+                    if (o is DateTime) record.Fields.Add(((DateTime) o).ToString("yyyy-MM-dd hh:mm:ss"));
                     else record.Fields.Add(o.ToString());
-                }
 
                 file.Records.Add(record);
             }
@@ -537,15 +534,11 @@
         {
             var rootedFileName = fileName;
             if (!Path.IsPathRooted(rootedFileName))
-            {
                 rootedFileName = Path.Combine(AppDomain.CurrentDomain.SetupInformation.ApplicationBase, rootedFileName);
-            }
 
             var directory = Path.GetDirectoryName(rootedFileName);
             if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-            {
                 Directory.CreateDirectory(directory);
-            }
 
             return rootedFileName;
         }
@@ -709,19 +702,15 @@ data 1,""data, 2"",data 3
 
             foreach (var r in Enumerable.Range(1, 10000).Select(
                 i =>
-                    {
-                        var rec = new CsvRecord();
+                {
+                    var rec = new CsvRecord();
 
-                        foreach (var r in Enumerable.Range(1, 80).Select(s => field))
-                        {
-                            rec.Fields.Add(r);
-                        }
+                    foreach (var r in Enumerable.Range(1, 80).Select(s => field))
+                        rec.Fields.Add(r);
 
-                        return rec;
-                    }))
-            {
+                    return rec;
+                }))
                 csvFile.Records.Add(r);
-            }
             using (var wr = new CsvWriter())
             {
                 wr.WriteCsv(csvFile, filePath);
@@ -732,6 +721,42 @@ data 1,""data, 2"",data 3
                 if (reader.ReadNextRecord()) filed1 = reader.Fields[0];
             }
             Assert.AreEqual(filed1, field);
+        }
+        [TestMethod]
+        public void WriteCsvLineTest()
+        {
+            var rsg = new RandomStringGenerator(true, true, true, true);
+            var file = "";
+            using (
+                var writer = new SimpleFileLogger.RollingFlatFileTraceListener(
+                    "trace.log",
+                    null,
+                    null,
+                    512,
+                    "HHmmss",
+                    "yyyyMMdd",
+                    SimpleFileLogger.RollFileExistsBehavior.Increment,
+                    SimpleFileLogger.RollInterval.Day))
+            {
+
+                file = writer.Name;
+                foreach (var i in Enumerable.Range(1, 3))
+                    writer.WriteCsvLine(Enumerable.Range(1, 8).Select(x => rsg.Generate(3, 6)).ToArray());
+                foreach (var i in Enumerable.Range(1, 3))
+                    writer.WriteCsvLine(
+                        Enumerable.Range(1, 8)
+                            .Select(x => rsg.Generate(2) + Environment.NewLine + rsg.Generate(1, 2))
+                            .ToArray());
+                writer.Flush();
+            }
+
+            if (File.Exists(file))
+            {
+
+            }
+            else
+                Assert.Fail();
+
         }
 
         #endregion Verification methods
