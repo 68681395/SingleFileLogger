@@ -33,11 +33,24 @@ namespace Tsharp
     {
         public static LogSource Default = new LogSource();
 
+        /// <summary>
+        /// write entry to the default logger
+        /// </summary>
+        /// <param name="entry"></param>
         public static void WriteLine(object entry)
         {
             Default.WriteLine(entry);
         }
 
+        /// <summary>
+        /// write the category and entry to the default logger, such as 'category+entry
+        /// </summary>
+        /// <param name="entry"></param>
+        /// <param name="category"></param>
+        public static void WriteLine(object entry, string category)
+        {
+            Default.WriteLine(entry, category);
+        }
         /// <summary>
         ///     Defines the behavior when the roll file is created.
         /// </summary>
@@ -818,7 +831,7 @@ namespace Tsharp
             private static Encoding GetEncodingWithFallback(Encoding encoding)
             {
                 // Clone it and set the "?" replacement fallback
-                var fallbackEncoding = (Encoding) encoding.Clone();
+                var fallbackEncoding = (Encoding)encoding.Clone();
                 fallbackEncoding.EncoderFallback = EncoderFallback.ReplacementFallback;
                 fallbackEncoding.DecoderFallback = DecoderFallback.ReplacementFallback;
 
@@ -1373,7 +1386,7 @@ namespace Tsharp
 
                 private static Encoding GetEncodingWithFallback()
                 {
-                    var encoding = (Encoding) new UTF8Encoding(false).Clone();
+                    var encoding = (Encoding)new UTF8Encoding(false).Clone();
                     encoding.EncoderFallback = EncoderFallback.ReplacementFallback;
                     encoding.DecoderFallback = DecoderFallback.ReplacementFallback;
                     return encoding;
@@ -1386,7 +1399,7 @@ namespace Tsharp
                 public void PerformRoll(DateTimeOffset rollDateTime)
                 {
                     var actualFileName =
-                        ((FileStream) ((StreamWriter) owner.Writer).BaseStream).Name;
+                        ((FileStream)((StreamWriter)owner.Writer).BaseStream).Name;
 
                     if ((owner.rollFileExistsBehavior == RollFileExistsBehavior.Overwrite) &&
                         string.IsNullOrEmpty(owner.timeStampPattern))
@@ -1480,7 +1493,7 @@ namespace Tsharp
                     {
                         currentWriter = owner.Writer as StreamWriter;
                         if (currentWriter == null) return false;
-                        var actualFileName = ((FileStream) currentWriter.BaseStream).Name;
+                        var actualFileName = ((FileStream)currentWriter.BaseStream).Name;
 
                         currentWriter.Close();
 
@@ -1510,7 +1523,7 @@ namespace Tsharp
                             NextRollDateTime =
                                 CalculateNextRollDate(
                                     File.GetCreationTime(
-                                        ((FileStream) ((StreamWriter) owner.Writer).BaseStream).Name));
+                                        ((FileStream)((StreamWriter)owner.Writer).BaseStream).Name));
                         }
                         catch (Exception)
                         {
@@ -1578,7 +1591,7 @@ namespace Tsharp
                 public override void Write(char value)
                 {
                     base.Write(value);
-                    Tally += Encoding.GetByteCount(new[] {value});
+                    Tally += Encoding.GetByteCount(new[] { value });
                 }
 
                 /// <summary>
@@ -1668,7 +1681,7 @@ namespace Tsharp
                     null, 1024, "yyyyMMddHHmmss", "'archived'yyyyMMdd",
                     RollFileExistsBehavior.Increment, RollInterval.Day);
 
-                Listeners = new TraceListener[] {listener};
+                Listeners = new TraceListener[] { listener };
             }
 
             /// <summary>
@@ -1706,7 +1719,12 @@ namespace Tsharp
                 GC.SuppressFinalize(this);
             }
 
-            public void WriteLine(object logEntry)
+            public void WriteLine(object message)
+            {
+                WriteLine(message, null);
+            }
+
+            public void WriteLine(object message, string category)
             {
                 foreach (var item in Listeners)
                 {
@@ -1714,7 +1732,7 @@ namespace Tsharp
                     try
                     {
                         if (!listener.IsThreadSafe) Monitor.Enter(listener);
-                        listener.WriteLine(logEntry);
+                        listener.WriteLine(message, category);
                         if (AutoFlush) listener.Flush();
                     }
                     finally
@@ -2093,7 +2111,7 @@ namespace Tsharp
             /// </summary>
             public int? FieldCount
             {
-                get { return Fields != null ? Fields.Count : (int?) null; }
+                get { return Fields != null ? Fields.Count : (int?)null; }
             }
 
             #endregion Properties
@@ -2229,7 +2247,7 @@ namespace Tsharp
             /// <returns></returns>
             public DataTable ReadIntoDataTable()
             {
-                return ReadIntoDataTable(new System.Type[] {});
+                return ReadIntoDataTable(new System.Type[] { });
             }
 
             /// <summary>
@@ -2571,7 +2589,7 @@ namespace Tsharp
             {
                 using (
                     var reader = new CsvReader(filePath, encoding)
-                        {HasHeaderRow = hasHeaderRow, TrimColumns = trimColumns})
+                    { HasHeaderRow = hasHeaderRow, TrimColumns = trimColumns })
                 {
                     PopulateCsvFile(reader);
                 }
@@ -2610,7 +2628,7 @@ namespace Tsharp
             {
                 using (
                     var reader = new CsvReader(stream, encoding)
-                        {HasHeaderRow = hasHeaderRow, TrimColumns = trimColumns})
+                    { HasHeaderRow = hasHeaderRow, TrimColumns = trimColumns })
                 {
                     PopulateCsvFile(reader);
                 }
@@ -2649,7 +2667,7 @@ namespace Tsharp
             {
                 using (
                     var reader = new CsvReader(encoding, csvContent)
-                        {HasHeaderRow = hasHeaderRow, TrimColumns = trimColumns})
+                    { HasHeaderRow = hasHeaderRow, TrimColumns = trimColumns })
                 {
                     PopulateCsvFile(reader);
                 }

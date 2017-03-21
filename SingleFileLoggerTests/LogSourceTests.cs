@@ -61,7 +61,16 @@ namespace Tsharp
         [TestMethod]
         public void WriteLineTest()
         {
-            Assert.Fail();
+            RandomStringGenerator random = new RandomStringGenerator();
+
+            foreach (var i in Enumerable.Range(1, 3000))
+            {
+                SimpleLogger.WriteLine(random.Generate(1000),"[INFO]");
+            }
+            foreach (var i in Enumerable.Range(1, 3000))
+            {
+                SimpleLogger.WriteLine(random.Generate(1000), "[DEBUG]");
+            }
         }
     }
 }
