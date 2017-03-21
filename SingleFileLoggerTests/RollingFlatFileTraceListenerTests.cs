@@ -10,15 +10,15 @@ namespace Tsharp
         [TestMethod]
         public void RollingFlatFileTraceListenerTest()
         {
-            var writer = new SimpleFileLogger.RollingFlatFileTraceListener(
+            var writer = new SimpleLogger.RollingFlatFileTraceListener(
                 "trace.log",
                 null,
                 null,
                 512,
                 "HHmmss",
                 "yyyyMMdd",
-                SimpleFileLogger.RollFileExistsBehavior.Increment,
-                SimpleFileLogger.RollInterval.Day);
+                SimpleLogger.RollFileExistsBehavior.Increment,
+                SimpleLogger.RollInterval.Day);
 
             writer.WriteLine("rrrrrr");
 

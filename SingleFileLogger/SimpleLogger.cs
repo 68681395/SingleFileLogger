@@ -10,29 +10,32 @@
 
 #endregion
 
+#region USING BLOCK
+
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Runtime.Versioning;
+using System.Security;
+using System.Security.Permissions;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading;
+
+#endregion
+
 namespace Tsharp
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Globalization;
-    using System.Data;
-    using System.IO;
-    using System.Linq;
-    using System.Runtime.Versioning;
-    using System.Security;
-    using System.Security.Permissions;
-    using System.Text;
-    using System.Text.RegularExpressions;
-    using System.Threading;
-    using static SimpleFileLogger;
-
-    public class SimpleFileLogger
+    public static class SimpleLogger
     {
-        private static LogSource source = new LogSource();
+        public static LogSource Default = new LogSource();
 
         public static void WriteLine(object entry)
         {
-            source.WriteLine(entry);
+            Default.WriteLine(entry);
         }
 
         /// <summary>
@@ -131,12 +134,13 @@ namespace Tsharp
             /// </summary>
             public void Purge()
             {
-                var extension = Path.GetExtension(this.baseFileName);
-                var searchPattern = Path.GetFileNameWithoutExtension(this.baseFileName) + ".*" + extension;
+                var extension = Path.GetExtension(baseFileName);
+                var searchPattern = Path.GetFileNameWithoutExtension(baseFileName) + ".*" +
+                                    extension;
 
-                var matchingFiles = this.TryGetMatchingFiles(searchPattern);
+                var matchingFiles = TryGetMatchingFiles(searchPattern);
 
-                if (matchingFiles.Length <= this.cap) return;
+                if (matchingFiles.Length <= cap) return;
 
                 // sort the archive files in descending order by creation date and sequence number
                 var sortedArchiveFiles =
@@ -146,7 +150,7 @@ namespace Tsharp
                 using (var enumerator = sortedArchiveFiles.GetEnumerator())
                 {
                     // skip the most recent files
-                    for (var i = 0; i < this.cap; i++) if (!enumerator.MoveNext()) return;
+                    for (var i = 0; i < cap; i++) if (!enumerator.MoveNext()) return;
 
                     // delete the older files
                     while (enumerator.MoveNext()) TryDelete(enumerator.Current.Path);
@@ -157,7 +161,8 @@ namespace Tsharp
             {
                 try
                 {
-                    return Directory.GetFiles(this.directory, searchPattern, SearchOption.TopDirectoryOnly);
+                    return Directory.GetFiles(directory, searchPattern,
+                        SearchOption.TopDirectoryOnly);
                 }
                 catch (DirectoryNotFoundException)
                 {
@@ -188,7 +193,7 @@ namespace Tsharp
                 }
             }
 
-            private static DateTime GetCreationTime(string path)
+            private static DateTimeOffset GetCreationTime(string path)
             {
                 try
                 {
@@ -198,7 +203,7 @@ namespace Tsharp
                 {
                     // will cause file be among the first files when sorting, 
                     // and its deletion will likely fail causing it to be skipped
-                    return DateTime.MinValue;
+                    return DateTimeOffset.MinValue;
                 }
             }
 
@@ -216,7 +221,8 @@ namespace Tsharp
                 var sequenceDotIndex = fileName.LastIndexOf('.', extensionDotIndex - 1);
                 if (sequenceDotIndex < 0) return string.Empty;
 
-                return fileName.Substring(sequenceDotIndex + 1, extensionDotIndex - sequenceDotIndex - 1);
+                return fileName.Substring(sequenceDotIndex + 1,
+                    extensionDotIndex - sequenceDotIndex - 1);
             }
 
             internal class ArchiveFile : IComparable<ArchiveFile>
@@ -229,22 +235,22 @@ namespace Tsharp
 
                 public ArchiveFile(string path)
                 {
-                    this.Path = path;
-                    this.fileName = System.IO.Path.GetFileName(path);
-                    this.CreationTime = GetCreationTime(path);
+                    Path = path;
+                    fileName = System.IO.Path.GetFileName(path);
+                    CreationTime = GetCreationTime(path);
                 }
 
                 public string Path { get; }
 
-                public DateTime CreationTime { get; }
+                public DateTimeOffset CreationTime { get; }
 
                 public string SequenceString
                 {
                     get
                     {
-                        if (this.sequenceString == null) this.sequenceString = GetSequence(this.fileName);
+                        if (sequenceString == null) sequenceString = GetSequence(fileName);
 
-                        return this.sequenceString;
+                        return sequenceString;
                     }
                 }
 
@@ -252,29 +258,28 @@ namespace Tsharp
                 {
                     get
                     {
-                        if (!this.sequence.HasValue)
+                        if (!sequence.HasValue)
                         {
                             int theSequence;
-                            if (int.TryParse(
-                                this.SequenceString,
-                                NumberStyles.None,
-                                CultureInfo.InvariantCulture,
-                                out theSequence)) this.sequence = theSequence;
-                            else this.sequence = 0;
+                            if (int.TryParse(SequenceString, NumberStyles.None,
+                                CultureInfo.InvariantCulture, out theSequence))
+                                sequence = theSequence;
+                            else sequence = 0;
                         }
 
-                        return this.sequence.Value;
+                        return sequence.Value;
                     }
                 }
 
                 public int CompareTo(ArchiveFile other)
                 {
-                    var creationDateComparison = this.CreationTime.CompareTo(other.CreationTime);
+                    var creationDateComparison = CreationTime.CompareTo(other.CreationTime);
                     if (creationDateComparison != 0) return creationDateComparison;
 
-                    if ((this.Sequence != 0) && (other.Sequence != 0)) return this.Sequence.CompareTo(other.Sequence);
+                    if ((Sequence != 0) && (other.Sequence != 0))
+                        return Sequence.CompareTo(other.Sequence);
                     // compare the sequence part of the file name as plain strings
-                    return this.SequenceString.CompareTo(other.SequenceString);
+                    return SequenceString.CompareTo(other.SequenceString);
                 }
             }
         }
@@ -282,7 +287,7 @@ namespace Tsharp
         /// <summary>
         ///     Helper class for working with environment variables.
         /// </summary>
-        public class EnvironmentHelper
+        public static class EnvironmentHelper
         {
             /// <summary>
             ///     Sustitute the Environment Variables
@@ -297,11 +302,13 @@ namespace Tsharp
                     var variables = Environment.ExpandEnvironmentVariables(fileName);
 
                     // If an Environment Variable is not found then remove any invalid tokens
-                    var filter = new Regex("%(.*?)%", RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace);
+                    var filter = new Regex("%(.*?)%",
+                        RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace);
 
                     var filePath = filter.Replace(variables, "");
 
-                    if (Path.GetDirectoryName(filePath) == null) filePath = Path.GetFileName(filePath);
+                    if (Path.GetDirectoryName(filePath) == null)
+                        filePath = Path.GetFileName(filePath);
 
                     return RootFileNameAndEnsureTargetFolderExists(filePath);
                 }
@@ -315,23 +322,24 @@ namespace Tsharp
             {
                 var rootedFileName = fileName;
                 if (!Path.IsPathRooted(rootedFileName))
-                    rootedFileName = Path.Combine(
-                        AppDomain.CurrentDomain.SetupInformation.ApplicationBase,
-                        rootedFileName);
+                    rootedFileName =
+                        Path.Combine(AppDomain.CurrentDomain.SetupInformation.ApplicationBase,
+                            rootedFileName);
 
                 var directory = Path.GetDirectoryName(rootedFileName);
-                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory)) Directory.CreateDirectory(directory);
+                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                    Directory.CreateDirectory(directory);
 
                 return rootedFileName;
             }
         }
 
-        /// <devdoc>
+        /// <summary>
         ///     <para>
         ///         Provides the <see langword='abstract ' />base class for the listeners who
         ///         monitor trace and debug output.
         ///     </para>
-        /// </devdoc>
+        /// </summary>
         [HostProtection(Synchronization = true)]
         public abstract class TraceListener : IDisposable
         {
@@ -341,194 +349,175 @@ namespace Tsharp
 
             private string listenerName;
 
-            /// <devdoc>
+            /// <summary>
             ///     <para>Initializes a new instance of the <see cref='System.Diagnostics.TraceListener' /> class.</para>
-            /// </devdoc>
+            /// </summary>
             protected TraceListener()
             {
             }
 
-            /// <devdoc>
+            /// <summary>
             ///     <para>
             ///         Initializes a new instance of the <see cref='System.Diagnostics.TraceListener' /> class using the specified
             ///         name as the
             ///         listener.
             ///     </para>
-            /// </devdoc>
+            /// </summary>
             protected TraceListener(string name)
             {
-                this.listenerName = name;
+                listenerName = name;
             }
 
-            /// <devdoc>
+            /// <summary>
             ///     <para> Gets or sets a name for this <see cref='System.Diagnostics.TraceListener' />.</para>
-            /// </devdoc>
+            /// </summary>
             public virtual string Name
             {
-                get
-                {
-                    return this.listenerName == null ? "" : this.listenerName;
-                }
+                get { return listenerName == null ? "" : listenerName; }
 
-                set
-                {
-                    this.listenerName = value;
-                }
+                set { listenerName = value; }
             }
 
             public virtual bool IsThreadSafe
             {
-                get
-                {
-                    return false;
-                }
+                get { return false; }
             }
 
-            /// <devdoc>
+            /// <summary>
             ///     <para>Gets or sets the indent level.</para>
-            /// </devdoc>
+            /// </summary>
             public int IndentLevel
             {
-                get
-                {
-                    return this.indentLevel;
-                }
+                get { return indentLevel; }
 
-                set
-                {
-                    this.indentLevel = value < 0 ? 0 : value;
-                }
+                set { indentLevel = value < 0 ? 0 : value; }
             }
 
-            /// <devdoc>
+            /// <summary>
             ///     <para>Gets or sets the number of spaces in an indent.</para>
-            /// </devdoc>
+            /// </summary>
             public int IndentSize
             {
-                get
-                {
-                    return this.indentSize;
-                }
+                get { return indentSize; }
 
                 set
                 {
                     if (value < 0)
-                        throw new ArgumentOutOfRangeException(
-                                  "IndentSize",
-                                  value,
-                                  "IndentSize must be greater then zero");
-                    this.indentSize = value;
+                        throw new ArgumentOutOfRangeException("IndentSize", value,
+                            "IndentSize must be greater then zero");
+                    indentSize = value;
                 }
             }
 
-            /// <devdoc>
+            /// <summary>
             ///     <para>Gets or sets a value indicating whether an indent is needed.</para>
-            /// </devdoc>
+            /// </summary>
             protected bool NeedIndent { get; set; } = true;
 
-            /// <devdoc>
-            /// </devdoc>
+            /// <summary>
+            /// 
+            /// </summary>
             public void Dispose()
             {
-                this.Dispose(true);
+                Dispose(true);
                 GC.SuppressFinalize(this);
             }
 
-            /// <devdoc>
-            /// </devdoc>
+            /// <summary>
+            /// </summary>
             protected virtual void Dispose(bool disposing)
             {
             }
 
-            /// <devdoc>
+            /// <summary>
             ///     <para>
             ///         When overridden in a derived class, closes the output stream
             ///         so that it no longer receives tracing or debugging output.
             ///     </para>
-            /// </devdoc>
+            /// </summary>
             public virtual void Close()
             {
             }
 
-            /// <devdoc>
+            /// <summary>
             ///     <para>When overridden in a derived class, flushes the output buffer.</para>
-            /// </devdoc>
+            /// </summary>
             public virtual void Flush()
             {
             }
 
-            /// <devdoc>
+            /// <summary>
             ///     <para>
             ///         When overridden in a derived class, writes the specified
             ///         message to the listener you specify in the derived class.
             ///     </para>
-            /// </devdoc>
+            /// </summary>
             public abstract void Write(string message);
 
-            /// <devdoc>
+            /// <summary>
             ///     <para>
             ///         Writes the name of the <paramref name="o" /> parameter to the listener you specify when you inherit from the
             ///         <see cref='System.Diagnostics.TraceListener' />
             ///         class.
             ///     </para>
-            /// </devdoc>
+            /// </summary>
             public virtual void Write(object o)
             {
                 if (o == null) return;
-                this.Write(o.ToString());
+                Write(o.ToString());
             }
 
-            /// <devdoc>
+            /// <summary>
             ///     <para>
             ///         Writes a category name and a message to the listener you specify when you
             ///         inherit from the <see cref='System.Diagnostics.TraceListener' />
             ///         class.
             ///     </para>
-            /// </devdoc>
+            /// </summary>
             public virtual void Write(string message, string category)
             {
-                if (category == null) this.Write(message);
-                else this.Write(category + ": " + (message == null ? string.Empty : message));
+                if (category == null) Write(message);
+                else Write(category + ": " + (message == null ? string.Empty : message));
             }
 
-            /// <devdoc>
+            /// <summary>
             ///     <para>
             ///         Writes a category name and the name of the <paramref name="o" /> parameter to the listener you
             ///         specify when you inherit from the <see cref='System.Diagnostics.TraceListener' />
             ///         class.
             ///     </para>
-            /// </devdoc>
+            /// </summary>
             public virtual void Write(object o, string category)
             {
-                if (category == null) this.Write(o);
-                else this.Write(o == null ? "" : o.ToString(), category);
+                if (category == null) Write(o);
+                else Write(o == null ? "" : o.ToString(), category);
             }
 
-            /// <devdoc>
+            /// <summary>
             ///     <para>
             ///         Writes the indent to the listener you specify when you
             ///         inherit from the <see cref='System.Diagnostics.TraceListener' />
             ///         class, and resets the <see cref='TraceListener.NeedIndent' /> property to <see langword='false' />.
             ///     </para>
-            /// </devdoc>
+            /// </summary>
             protected virtual void WriteIndent()
             {
-                this.NeedIndent = false;
-                for (var i = 0; i < this.indentLevel; i++)
-                    if (this.indentSize == 4) this.Write("    ");
-                    else for (var j = 0; j < this.indentSize; j++) this.Write(" ");
+                NeedIndent = false;
+                for (var i = 0; i < indentLevel; i++)
+                    if (indentSize == 4) Write("    ");
+                    else for (var j = 0; j < indentSize; j++) Write(" ");
             }
 
-            /// <devdoc>
+            /// <summary>
             ///     <para>
             ///         When overridden in a derived class, writes a message to the listener you specify in
             ///         the derived class, followed by a line terminator. The default line terminator is a carriage return followed
             ///         by a line feed (\r\n).
             ///     </para>
-            /// </devdoc>
+            /// </summary>
             public abstract void WriteLine(string message);
 
-            /// <devdoc>
+            /// <summary>
             ///     <para>
             ///         Writes the name of the <paramref name="o" /> parameter to the listener you specify when you inherit from the
             ///         <see cref='System.Diagnostics.TraceListener' /> class, followed by a line terminator. The default line
@@ -536,26 +525,26 @@ namespace Tsharp
             ///         carriage return followed by a line feed
             ///         (\r\n).
             ///     </para>
-            /// </devdoc>
+            /// </summary>
             public virtual void WriteLine(object o)
             {
-                this.WriteLine(o == null ? "" : o.ToString());
+                WriteLine(o == null ? "" : o.ToString());
             }
 
-            /// <devdoc>
+            /// <summary>
             ///     <para>
             ///         Writes a category name and a message to the listener you specify when you
             ///         inherit from the <see cref='System.Diagnostics.TraceListener' /> class,
             ///         followed by a line terminator. The default line terminator is a carriage return followed by a line feed (\r\n).
             ///     </para>
-            /// </devdoc>
+            /// </summary>
             public virtual void WriteLine(string message, string category)
             {
-                if (category == null) this.WriteLine(message);
-                else this.WriteLine(category + ": " + (message == null ? string.Empty : message));
+                if (category == null) WriteLine(message);
+                else WriteLine(category + ": " + (message == null ? string.Empty : message));
             }
 
-            /// <devdoc>
+            /// <summary>
             ///     <para>
             ///         Writes a category
             ///         name and the name of the <paramref name="o" />parameter to the listener you
@@ -563,20 +552,20 @@ namespace Tsharp
             ///         class, followed by a line terminator. The default line terminator is a carriage
             ///         return followed by a line feed (\r\n).
             ///     </para>
-            /// </devdoc>
+            /// </summary>
             public virtual void WriteLine(object o, string category)
             {
-                this.WriteLine(o == null ? "" : o.ToString(), category);
+                WriteLine(o == null ? "" : o.ToString(), category);
             }
         }
 
-        /// <devdoc>
+        /// <summary>
         ///     <para>
         ///         Directs tracing or debugging output to
         ///         a <see cref='T:System.IO.TextWriter' /> or to a <see cref='T:System.IO.Stream' />,
         ///         such as <see cref='F:System.Console.Out' /> or <see cref='T:System.IO.FileStream' />.
         ///     </para>
-        /// </devdoc>
+        /// </summary>
         [HostProtection(Synchronization = true)]
         public class TextWriterTraceListener : TraceListener
         {
@@ -588,149 +577,141 @@ namespace Tsharp
 
             internal TextWriter writer;
 
-            /// <devdoc>
+            /// <summary>
             ///     <para>
             ///         Initializes a new instance of the <see cref='System.Diagnostics.TextWriterTraceListener' /> class with
             ///         <see cref='System.IO.TextWriter' />
             ///         as the output recipient.
             ///     </para>
-            /// </devdoc>
+            /// </summary>
             public TextWriterTraceListener()
             {
             }
 
-            /// <devdoc>
+            /// <summary>
             ///     <para>
             ///         Initializes a new instance of the <see cref='System.Diagnostics.TextWriterTraceListener' /> class, using the
             ///         stream as the recipient of the debugging and tracing output.
             ///     </para>
-            /// </devdoc>
-            public TextWriterTraceListener(Stream stream)
-                : this(stream, string.Empty)
+            /// </summary>
+            public TextWriterTraceListener(Stream stream) : this(stream, string.Empty)
             {
             }
 
-            /// <devdoc>
+            /// <summary>
             ///     <para>
             ///         Initializes a new instance of the <see cref='System.Diagnostics.TextWriterTraceListener' /> class with the
             ///         specified name and using the stream as the recipient of the debugging and tracing output.
             ///     </para>
-            /// </devdoc>
-            public TextWriterTraceListener(Stream stream, string name)
-                : base(name)
+            /// </summary>
+            public TextWriterTraceListener(Stream stream, string name) : base(name)
             {
                 if (stream == null) throw new ArgumentNullException("stream");
-                this.writer = new StreamWriter(stream);
+                writer = new StreamWriter(stream);
             }
 
-            /// <devdoc>
+            /// <summary>
             ///     <para>
             ///         Initializes a new instance of the <see cref='System.Diagnostics.TextWriterTraceListener' /> class using the
             ///         specified writer as recipient of the tracing or debugging output.
             ///     </para>
-            /// </devdoc>
-            public TextWriterTraceListener(TextWriter writer)
-                : this(writer, string.Empty)
+            /// </summary>
+            public TextWriterTraceListener(TextWriter writer) : this(writer, string.Empty)
             {
             }
 
-            /// <devdoc>
+            /// <summary>
             ///     <para>
             ///         Initializes a new instance of the <see cref='System.Diagnostics.TextWriterTraceListener' /> class with the
             ///         specified name and using the specified writer as recipient of the tracing or
             ///         debugging
             ///         output.
             ///     </para>
-            /// </devdoc>
-            public TextWriterTraceListener(TextWriter writer, string name)
-                : base(name)
+            /// </summary>
+            public TextWriterTraceListener(TextWriter writer, string name) : base(name)
             {
                 if (writer == null) throw new ArgumentNullException("writer");
                 this.writer = writer;
             }
 
-            /// <devdoc>
+            /// <summary>
             ///     <para>[To be supplied.]</para>
-            /// </devdoc>
+            /// </summary>
             [ResourceExposure(ResourceScope.Machine)]
             public TextWriterTraceListener(string fileName)
             {
                 this.fileName = fileName;
             }
 
-            /// <devdoc>
+            /// <summary>
             ///     <para>[To be supplied.]</para>
-            /// </devdoc>
+            /// </summary>
             [ResourceExposure(ResourceScope.Machine)]
-            public TextWriterTraceListener(string fileName, string name)
-                : base(name)
+            public TextWriterTraceListener(string fileName, string name) : base(name)
             {
                 this.fileName = fileName;
             }
 
-            /// <devdoc>
+            /// <summary>
             ///     <para>
             ///         Indicates the text writer that receives the tracing
             ///         or debugging output.
             ///     </para>
-            /// </devdoc>
+            /// </summary>
             public TextWriter Writer
             {
                 get
                 {
-                    this.EnsureWriter();
-                    return this.writer;
+                    EnsureWriter();
+                    return writer;
                 }
 
-                set
-                {
-                    this.writer = value;
-                }
+                set { writer = value; }
             }
 
-            /// <devdoc>
+            /// <summary>
             ///     <para>
             ///         Closes the <see cref='System.Diagnostics.TextWriterTraceListener.Writer' /> so that it no longer
             ///         receives tracing or debugging output.
             ///     </para>
-            /// </devdoc>
+            /// </summary>
             public override void Close()
             {
-                if (this.writer != null)
+                if (writer != null)
                     try
                     {
-                        this.writer.Close();
+                        writer.Close();
                     }
                     catch (ObjectDisposedException)
                     {
                     }
 
-                this.writer = null;
+                writer = null;
             }
 
             /// <internalonly />
-            /// <devdoc>
-            /// </devdoc>
+            /// <summary>
+            /// </summary>
             protected override void Dispose(bool disposing)
             {
                 try
                 {
                     if (disposing)
                     {
-                        this.Close();
+                        Close();
                     }
                     else
                     {
                         // clean up resources
-                        if (this.writer != null)
+                        if (writer != null)
                             try
                             {
-                                this.writer.Close();
+                                writer.Close();
                             }
                             catch (ObjectDisposedException)
                             {
                             }
-                        this.writer = null;
+                        writer = null;
                     }
                 }
                 finally
@@ -739,56 +720,56 @@ namespace Tsharp
                 }
             }
 
-            /// <devdoc>
+            /// <summary>
             ///     <para>Flushes the output buffer for the <see cref='System.Diagnostics.TextWriterTraceListener.Writer' />.</para>
-            /// </devdoc>
+            /// </summary>
             public override void Flush()
             {
-                if (!this.EnsureWriter()) return;
+                if (!EnsureWriter()) return;
                 try
                 {
-                    this.writer.Flush();
+                    writer.Flush();
                 }
                 catch (ObjectDisposedException)
                 {
                 }
             }
 
-            /// <devdoc>
+            /// <summary>
             ///     <para>
             ///         Writes a message
             ///         to this instance's <see cref='System.Diagnostics.TextWriterTraceListener.Writer' />.
             ///     </para>
-            /// </devdoc>
+            /// </summary>
             public override void Write(string message)
             {
-                if (!this.EnsureWriter()) return;
-                if (this.NeedIndent) this.WriteIndent();
+                if (!EnsureWriter()) return;
+                if (NeedIndent) WriteIndent();
                 try
                 {
-                    this.writer.Write(message);
+                    writer.Write(message);
                 }
                 catch (ObjectDisposedException)
                 {
                 }
             }
 
-            /// <devdoc>
+            /// <summary>
             ///     <para>
             ///         Writes a message
             ///         to this instance's <see cref='System.Diagnostics.TextWriterTraceListener.Writer' /> followed by a line
             ///         terminator. The
             ///         default line terminator is a carriage return followed by a line feed (\r\n).
             ///     </para>
-            /// </devdoc>
+            /// </summary>
             public override void WriteLine(string message)
             {
-                if (!this.EnsureWriter()) return;
-                if (this.NeedIndent) this.WriteIndent();
+                if (!EnsureWriter()) return;
+                if (NeedIndent) WriteIndent();
                 try
                 {
-                    this.writer.WriteLine(message);
-                    this.NeedIndent = true;
+                    writer.WriteLine(message);
+                    NeedIndent = true;
                 }
                 catch (ObjectDisposedException)
                 {
@@ -797,11 +778,11 @@ namespace Tsharp
 
             public virtual void WriteCsvLine(params string[] fields)
             {
-                if (!this.EnsureWriter()) return;
-                if (this.NeedIndent) this.WriteIndent();
+                if (!EnsureWriter()) return;
+                if (NeedIndent) WriteIndent();
                 try
                 {
-                    this.WriteRecord(this.writer, fields);
+                    WriteRecord(writer, fields);
                 }
                 catch (ObjectDisposedException)
                 {
@@ -817,19 +798,18 @@ namespace Tsharp
                     var escapeQuotes = fields[i].Contains("\"");
                     var fieldValue = escapeQuotes ? fields[i].Replace("\"", "\"\"") : fields[i];
 
-                    if (this._replaceCarriageReturnsAndLineFeedsFromFieldValues
-                        && (fieldValue.Contains("\r") || fieldValue.Contains("\n")))
+                    if (_replaceCarriageReturnsAndLineFeedsFromFieldValues &&
+                        (fieldValue.Contains("\r") || fieldValue.Contains("\n")))
                     {
                         quotesRequired = true;
-                        fieldValue = fieldValue.Replace("\r\n", this._carriageReturnAndLineFeedReplacement);
-                        fieldValue = fieldValue.Replace("\r", this._carriageReturnAndLineFeedReplacement);
-                        fieldValue = fieldValue.Replace("\n", this._carriageReturnAndLineFeedReplacement);
+                        fieldValue = fieldValue.Replace("\r\n",
+                            _carriageReturnAndLineFeedReplacement);
+                        fieldValue = fieldValue.Replace("\r", _carriageReturnAndLineFeedReplacement);
+                        fieldValue = fieldValue.Replace("\n", _carriageReturnAndLineFeedReplacement);
                     }
 
-                    writer.Write(
-                        "{0}{1}{0}{2}",
-                        quotesRequired || escapeQuotes ? "\"" : string.Empty,
-                        fieldValue,
+                    writer.Write("{0}{1}{0}{2}",
+                        quotesRequired || escapeQuotes ? "\"" : string.Empty, fieldValue,
                         i < fields.Length - 1 ? "," : string.Empty);
                 }
                 writer.WriteLine();
@@ -838,7 +818,7 @@ namespace Tsharp
             private static Encoding GetEncodingWithFallback(Encoding encoding)
             {
                 // Clone it and set the "?" replacement fallback
-                var fallbackEncoding = (Encoding)encoding.Clone();
+                var fallbackEncoding = (Encoding) encoding.Clone();
                 fallbackEncoding.EncoderFallback = EncoderFallback.ReplacementFallback;
                 fallbackEncoding.DecoderFallback = DecoderFallback.ReplacementFallback;
 
@@ -852,11 +832,11 @@ namespace Tsharp
             {
                 var ret = true;
 
-                if (this.writer == null)
+                if (writer == null)
                 {
                     ret = false;
 
-                    if (this.fileName == null) return ret;
+                    if (fileName == null) return ret;
 
                     // StreamWriter by default uses UTF8Encoding which will throw on invalid encoding errors.
                     // This can cause the internal StreamWriter's state to be irrecoverable. It is bad for tracing
@@ -870,14 +850,14 @@ namespace Tsharp
                     // we will try to open the given file for append but if we encounter
                     // IO errors, we will prefix the file name with a unique GUID value
                     // and try one more time 
-                    var fullPath = Path.GetFullPath(this.fileName);
+                    var fullPath = Path.GetFullPath(fileName);
                     var dirPath = Path.GetDirectoryName(fullPath);
                     var fileNameOnly = Path.GetFileName(fullPath);
 
                     for (var i = 0; i < 2; i++)
                         try
                         {
-                            this.writer = new StreamWriter(fullPath, true, noBOMwithFallback, 4096);
+                            writer = new StreamWriter(fullPath, true, noBOMwithFallback, 4096);
                             ret = true;
                             break;
                         }
@@ -899,7 +879,7 @@ namespace Tsharp
                             break;
                         }
 
-                    if (!ret) this.fileName = null;
+                    if (!ret) fileName = null;
                 }
                 return ret;
             }
@@ -921,8 +901,7 @@ namespace Tsharp
             ///     Initializes a new instance of <see cref="FormattedTextWriterTraceListener" /> with a <see cref="Stream" />.
             /// </summary>
             /// <param name="stream">The stream to write to.</param>
-            public FormattedTextWriterTraceListener(Stream stream)
-                : base(stream)
+            public FormattedTextWriterTraceListener(Stream stream) : base(stream)
             {
             }
 
@@ -930,8 +909,7 @@ namespace Tsharp
             ///     Initializes a new instance of <see cref="FormattedTextWriterTraceListener" /> with a <see cref="TextWriter" />.
             /// </summary>
             /// <param name="writer">The writer to write to.</param>
-            public FormattedTextWriterTraceListener(TextWriter writer)
-                : base(writer)
+            public FormattedTextWriterTraceListener(TextWriter writer) : base(writer)
             {
             }
 
@@ -949,8 +927,7 @@ namespace Tsharp
             /// </summary>
             /// <param name="stream">The stream to write to.</param>
             /// <param name="name">The name.</param>
-            public FormattedTextWriterTraceListener(Stream stream, string name)
-                : base(stream, name)
+            public FormattedTextWriterTraceListener(Stream stream, string name) : base(stream, name)
             {
             }
 
@@ -988,9 +965,9 @@ namespace Tsharp
         /// </summary>
         public class FlatFileTraceListener : FormattedTextWriterTraceListener
         {
-            private readonly string footer = string.Empty;
+            private readonly Func<string> footer;
 
-            private readonly string header = string.Empty;
+            private readonly Func<string> header;
 
             /// <summary>
             ///     Initializes a new instance of <see cref="FlatFileTraceListener" />.
@@ -1003,8 +980,7 @@ namespace Tsharp
             ///     Initializes a new instance of <see cref="FlatFileTraceListener" /> with a <see cref="FileStream" />.
             /// </summary>
             /// <param name="stream">The file stream.</param>
-            public FlatFileTraceListener(FileStream stream)
-                : base(stream)
+            public FlatFileTraceListener(FileStream stream) : base(stream)
             {
             }
 
@@ -1012,8 +988,7 @@ namespace Tsharp
             ///     Initializes a new instance of <see cref="FlatFileTraceListener" /> with a <see cref="StreamWriter" />.
             /// </summary>
             /// <param name="writer">The stream writer.</param>
-            public FlatFileTraceListener(StreamWriter writer)
-                : base(writer)
+            public FlatFileTraceListener(StreamWriter writer) : base(writer)
             {
             }
 
@@ -1021,8 +996,7 @@ namespace Tsharp
             ///     Initializes a new instance of <see cref="FlatFileTraceListener" /> with a file name.
             /// </summary>
             /// <param name="fileName">The file name.</param>
-            public FlatFileTraceListener(string fileName)
-                : base(fileName)
+            public FlatFileTraceListener(string fileName) : base(fileName)
             {
             }
 
@@ -1032,7 +1006,7 @@ namespace Tsharp
             /// <param name="fileName">The file stream.</param>
             /// <param name="header">The header.</param>
             /// <param name="footer">The footer.</param>
-            public FlatFileTraceListener(string fileName, string header, string footer)
+            public FlatFileTraceListener(string fileName, Func<string> header, Func<string> footer)
                 : base(fileName)
             {
                 this.header = header;
@@ -1044,8 +1018,7 @@ namespace Tsharp
             /// </summary>
             /// <param name="stream">The file stream.</param>
             /// <param name="name">The name.</param>
-            public FlatFileTraceListener(FileStream stream, string name)
-                : base(stream, name)
+            public FlatFileTraceListener(FileStream stream, string name) : base(stream, name)
             {
             }
 
@@ -1054,8 +1027,7 @@ namespace Tsharp
             /// </summary>
             /// <param name="writer">The stream writer.</param>
             /// <param name="name">The name.</param>
-            public FlatFileTraceListener(StreamWriter writer, string name)
-                : base(writer, name)
+            public FlatFileTraceListener(StreamWriter writer, string name) : base(writer, name)
             {
             }
 
@@ -1064,16 +1036,15 @@ namespace Tsharp
             /// </summary>
             /// <param name="fileName">The file name.</param>
             /// <param name="name">The name.</param>
-            public FlatFileTraceListener(string fileName, string name)
-                : base(fileName, name)
+            public FlatFileTraceListener(string fileName, string name) : base(fileName, name)
             {
             }
 
             public override void WriteLine(string message)
             {
-                if (!string.IsNullOrEmpty(this.header)) base.WriteLine(this.header);
+                if (header != null) base.WriteLine(header());
                 base.WriteLine(message);
-                if (!string.IsNullOrEmpty(this.footer)) base.WriteLine(this.footer);
+                if (footer != null) base.WriteLine(footer());
             }
         }
 
@@ -1119,24 +1090,12 @@ namespace Tsharp
             /// <param name="rollFileExistsBehavior">Expected behavior that will be used when the roll file has to be created.</param>
             /// <param name="rollInterval">The time interval that makes the file rolles.</param>
             public RollingFlatFileTraceListener(
-                string fileName,
-                string header,
-                string footer,
-                int rollSizeKB,
-                string timeStampPattern,
-                string archivedFolderPattern,
-                RollFileExistsBehavior rollFileExistsBehavior,
-                RollInterval rollInterval)
+                string fileName, Func<string> header, Func<string> footer, int rollSizeKB,
+                string timeStampPattern, string archivedFolderPattern,
+                RollFileExistsBehavior rollFileExistsBehavior, RollInterval rollInterval)
                 : this(
-                    fileName,
-                    header,
-                    footer,
-                    rollSizeKB,
-                    timeStampPattern,
-                    archivedFolderPattern,
-                    rollFileExistsBehavior,
-                    rollInterval,
-                    0)
+                    fileName, header, footer, rollSizeKB, timeStampPattern, archivedFolderPattern,
+                    rollFileExistsBehavior, rollInterval, 0)
             {
             }
 
@@ -1154,25 +1113,19 @@ namespace Tsharp
             /// <param name="rollInterval">The time interval that makes the file rolles.</param>
             /// <param name="maxArchivedFiles">The maximum number of archived files to keep.</param>
             public RollingFlatFileTraceListener(
-                string fileName,
-                string header,
-                string footer,
-                int rollSizeKB,
-                string timeStampPattern,
-                string archivedFolderPattern,
-                RollFileExistsBehavior rollFileExistsBehavior,
-                RollInterval rollInterval,
-                int maxArchivedFiles)
-                : base(fileName, header, footer)
+                string fileName, Func<string> header, Func<string> footer, int rollSizeKB,
+                string timeStampPattern, string archivedFolderPattern,
+                RollFileExistsBehavior rollFileExistsBehavior, RollInterval rollInterval,
+                int maxArchivedFiles) : base(fileName, header, footer)
             {
                 this.archivedFolderPattern = archivedFolderPattern;
-                this.rollSizeInBytes = rollSizeKB * 1024;
+                rollSizeInBytes = rollSizeKB * 1024;
                 this.timeStampPattern = timeStampPattern;
                 this.rollFileExistsBehavior = rollFileExistsBehavior;
                 this.rollInterval = rollInterval;
                 this.maxArchivedFiles = maxArchivedFiles;
 
-                this.RollingHelper = new StreamWriterRollingHelper(this);
+                RollingHelper = new StreamWriterRollingHelper(this);
             }
 
             /// <summary>
@@ -1185,19 +1138,19 @@ namespace Tsharp
 
             public override void WriteLine(object o)
             {
-                this.RollingHelper.RollIfNecessary();
+                RollingHelper.RollIfNecessary();
                 base.WriteLine(o);
             }
 
             public override void Write(string message)
             {
-                this.RollingHelper.RollIfNecessary();
+                RollingHelper.RollIfNecessary();
                 base.Write(message);
             }
 
             public override void WriteCsvLine(params string[] fields)
             {
-                this.RollingHelper.RollIfNecessary();
+                RollingHelper.RollIfNecessary();
                 base.WriteCsvLine(fields);
             }
 
@@ -1212,12 +1165,9 @@ namespace Tsharp
                 /// <value>
                 ///     The current data time.
                 /// </value>
-                public virtual DateTime CurrentDateTime
+                public virtual DateTimeOffset CurrentDateTime
                 {
-                    get
-                    {
-                        return DateTime.Now;
-                    }
+                    get { return DateTimeOffset.UtcNow; }
                 }
             }
 
@@ -1257,10 +1207,10 @@ namespace Tsharp
                 public StreamWriterRollingHelper(RollingFlatFileTraceListener owner)
                 {
                     this.owner = owner;
-                    this.dateTimeProvider = new DateTimeProvider();
+                    dateTimeProvider = new DateTimeProvider();
 
-                    this.performsRolling = (this.owner.rollInterval != RollInterval.None)
-                                           || (this.owner.rollSizeInBytes > 0);
+                    performsRolling = (this.owner.rollInterval != RollInterval.None) ||
+                                      (this.owner.rollSizeInBytes > 0);
                 }
 
                 /// <summary>
@@ -1271,10 +1221,7 @@ namespace Tsharp
                 /// </value>
                 public DateTimeProvider DateTimeProvider
                 {
-                    set
-                    {
-                        this.dateTimeProvider = value;
-                    }
+                    set { dateTimeProvider = value; }
                 }
 
                 /// <summary>
@@ -1283,16 +1230,16 @@ namespace Tsharp
                 /// <value>
                 ///     The next date when date based rolling should occur if configured.
                 /// </value>
-                public DateTime? NextRollDateTime { get; private set; }
+                public DateTimeOffset? NextRollDateTime { get; private set; }
 
                 /// <summary>
                 ///     Calculates the next roll date for the file.
                 /// </summary>
                 /// <param name="dateTime">The new date.</param>
                 /// <returns>The new date time to use.</returns>
-                public DateTime CalculateNextRollDate(DateTime dateTime)
+                public DateTimeOffset CalculateNextRollDate(DateTimeOffset dateTime)
                 {
-                    switch (this.owner.rollInterval)
+                    switch (owner.rollInterval)
                     {
                         case RollInterval.Minute:
                             return dateTime.AddMinutes(1);
@@ -1309,7 +1256,7 @@ namespace Tsharp
                         case RollInterval.Midnight:
                             return dateTime.AddDays(1).Date;
                         default:
-                            return DateTime.MaxValue;
+                            return DateTimeOffset.MaxValue;
                     }
                 }
 
@@ -1322,16 +1269,18 @@ namespace Tsharp
                 ///     <para />
                 ///     Information used for rolling checks should be set by now.
                 /// </remarks>
-                public DateTime? CheckIsRollNecessary()
+                public DateTimeOffset? CheckIsRollNecessary()
                 {
                     // check for size roll, if enabled.
-                    if ((this.owner.rollSizeInBytes > 0) && (this.managedWriter != null)
-                        && (this.managedWriter.Tally > this.owner.rollSizeInBytes)) return this.dateTimeProvider.CurrentDateTime;
+                    if ((owner.rollSizeInBytes > 0) && (managedWriter != null) &&
+                        (managedWriter.Tally > owner.rollSizeInBytes))
+                        return dateTimeProvider.CurrentDateTime;
 
                     // check for date roll, if enabled.
-                    var currentDateTime = this.dateTimeProvider.CurrentDateTime;
-                    if ((this.owner.rollInterval != RollInterval.None) && (this.NextRollDateTime != null)
-                        && (currentDateTime.CompareTo(this.NextRollDateTime.Value) >= 0)) return currentDateTime;
+                    var currentDateTime = dateTimeProvider.CurrentDateTime;
+                    if ((owner.rollInterval != RollInterval.None) && (NextRollDateTime != null) &&
+                        (currentDateTime.CompareTo(NextRollDateTime.Value) >= 0))
+                        return currentDateTime;
 
                     // no roll is necessary, return a null roll date
                     return null;
@@ -1343,17 +1292,18 @@ namespace Tsharp
                 /// <param name="actualFileName">The actual file name.</param>
                 /// <param name="currentDateTime">The current date and time.</param>
                 /// <returns>The new file name.</returns>
-                public string ComputeArchiveFileName(string actualFileName, DateTime currentDateTime)
+                public string ComputeArchiveFileName(
+                    string actualFileName, DateTimeOffset currentDateTime)
                 {
                     var directory = Path.GetDirectoryName(actualFileName);
-                    if (!string.IsNullOrWhiteSpace(this.owner.archivedFolderPattern))
+                    if (!string.IsNullOrWhiteSpace(owner.archivedFolderPattern))
                     {
-                        var rollingDirectory = Path.Combine(
-                            directory,
-                            DateTime.Now.ToString(this.owner.archivedFolderPattern));
+                        var rollingDirectory = Path.Combine(directory,
+                            DateTimeOffset.UtcNow.ToString(owner.archivedFolderPattern));
                         try
                         {
-                            if (!Directory.Exists(rollingDirectory)) Directory.CreateDirectory(rollingDirectory);
+                            if (!Directory.Exists(rollingDirectory))
+                                Directory.CreateDirectory(rollingDirectory);
                             directory = rollingDirectory;
                         }
                         catch (Exception)
@@ -1365,17 +1315,19 @@ namespace Tsharp
                     var extension = Path.GetExtension(actualFileName);
 
                     var fileNameBuilder = new StringBuilder(fileNameWithoutExtension);
-                    if (!string.IsNullOrEmpty(this.owner.timeStampPattern))
+                    if (!string.IsNullOrEmpty(owner.timeStampPattern))
                     {
                         fileNameBuilder.Append('.');
-                        fileNameBuilder.Append(
-                            currentDateTime.ToString(this.owner.timeStampPattern, CultureInfo.InvariantCulture));
+                        fileNameBuilder.Append(currentDateTime.ToString(owner.timeStampPattern,
+                            CultureInfo.InvariantCulture));
                     }
 
-                    if (this.owner.rollFileExistsBehavior == RollFileExistsBehavior.Increment)
+                    if (owner.rollFileExistsBehavior == RollFileExistsBehavior.Increment)
                     {
                         // look for max sequence for date
-                        var newSequence = FindMaxSequenceNumber(directory, fileNameBuilder.ToString(), extension) + 1;
+                        var newSequence =
+                            FindMaxSequenceNumber(directory, fileNameBuilder.ToString(), extension) +
+                            1;
                         fileNameBuilder.Append('.');
                         fileNameBuilder.Append(newSequence.ToString(CultureInfo.InvariantCulture));
                     }
@@ -1392,12 +1344,15 @@ namespace Tsharp
                 /// <param name="fileName">The file name.</param>
                 /// <param name="extension">The extension to use.</param>
                 /// <returns>The next sequence number.</returns>
-                public static int FindMaxSequenceNumber(string directoryName, string fileName, string extension)
+                public static int FindMaxSequenceNumber(
+                    string directoryName, string fileName, string extension)
                 {
-                    var existingFiles = Directory.GetFiles(directoryName, string.Format("{0}*{1}", fileName, extension));
+                    var existingFiles = Directory.GetFiles(directoryName,
+                        string.Format("{0}*{1}", fileName, extension));
 
                     var maxSequence = 0;
-                    var regex = new Regex(string.Format(@"{0}\.(?<sequence>\d+){1}$", fileName, extension));
+                    var regex =
+                        new Regex(string.Format(@"{0}\.(?<sequence>\d+){1}$", fileName, extension));
                     for (var i = 0; i < existingFiles.Length; i++)
                     {
                         var sequenceMatch = regex.Match(existingFiles[i]);
@@ -1406,7 +1361,8 @@ namespace Tsharp
                             var currentSequence = 0;
 
                             var sequenceInFile = sequenceMatch.Groups["sequence"].Value;
-                            if (!int.TryParse(sequenceInFile, out currentSequence)) continue; // very unlikely
+                            if (!int.TryParse(sequenceInFile, out currentSequence))
+                                continue; // very unlikely
 
                             if (currentSequence > maxSequence) maxSequence = currentSequence;
                         }
@@ -1417,7 +1373,7 @@ namespace Tsharp
 
                 private static Encoding GetEncodingWithFallback()
                 {
-                    var encoding = (Encoding)new UTF8Encoding(false).Clone();
+                    var encoding = (Encoding) new UTF8Encoding(false).Clone();
                     encoding.EncoderFallback = EncoderFallback.ReplacementFallback;
                     encoding.DecoderFallback = DecoderFallback.ReplacementFallback;
                     return encoding;
@@ -1427,35 +1383,36 @@ namespace Tsharp
                 ///     Perform the roll for the next date.
                 /// </summary>
                 /// <param name="rollDateTime">The roll date.</param>
-                public void PerformRoll(DateTime rollDateTime)
+                public void PerformRoll(DateTimeOffset rollDateTime)
                 {
-                    var actualFileName = ((FileStream)((StreamWriter)this.owner.Writer).BaseStream).Name;
+                    var actualFileName =
+                        ((FileStream) ((StreamWriter) owner.Writer).BaseStream).Name;
 
-                    if ((this.owner.rollFileExistsBehavior == RollFileExistsBehavior.Overwrite)
-                        && string.IsNullOrEmpty(this.owner.timeStampPattern))
+                    if ((owner.rollFileExistsBehavior == RollFileExistsBehavior.Overwrite) &&
+                        string.IsNullOrEmpty(owner.timeStampPattern))
                     {
                         // no roll will be actually performed: no timestamp pattern is available, and 
                         // the roll behavior is overwrite, so the original file will be truncated
-                        this.owner.Writer.Close();
+                        owner.Writer.Close();
                         File.WriteAllText(actualFileName, string.Empty);
                     }
                     else
                     {
                         // calculate archive name
-                        var archiveFileName = this.ComputeArchiveFileName(actualFileName, rollDateTime);
+                        var archiveFileName = ComputeArchiveFileName(actualFileName, rollDateTime);
                         // close file
-                        this.owner.Writer.Close();
+                        owner.Writer.Close();
                         // move file
-                        this.SafeMove(actualFileName, archiveFileName, rollDateTime);
+                        SafeMove(actualFileName, archiveFileName, rollDateTime);
                         // purge if necessary
-                        this.PurgeArchivedFiles(archiveFileName);
+                        PurgeArchivedFiles(archiveFileName);
                     }
 
                     // update writer - let TWTL open the file as needed to keep consistency
-                    this.owner.Writer = null;
-                    this.managedWriter = null;
-                    this.NextRollDateTime = null;
-                    this.UpdateRollingInformationIfNecessary();
+                    owner.Writer = null;
+                    managedWriter = null;
+                    NextRollDateTime = null;
+                    UpdateRollingInformationIfNecessary();
                 }
 
                 /// <summary>
@@ -1463,21 +1420,23 @@ namespace Tsharp
                 /// </summary>
                 public void RollIfNecessary()
                 {
-                    if (!this.performsRolling) return;
+                    if (!performsRolling) return;
 
-                    if (!this.UpdateRollingInformationIfNecessary()) return;
+                    if (!UpdateRollingInformationIfNecessary()) return;
 
-                    DateTime? rollDateTime;
-                    if ((rollDateTime = this.CheckIsRollNecessary()) != null) this.PerformRoll(rollDateTime.Value);
+                    DateTimeOffset? rollDateTime;
+                    if ((rollDateTime = CheckIsRollNecessary()) != null)
+                        PerformRoll(rollDateTime.Value);
                 }
 
-                private void SafeMove(string actualFileName, string archiveFileName, DateTime currentDateTime)
+                private void SafeMove(
+                    string actualFileName, string archiveFileName, DateTimeOffset currentDateTime)
                 {
                     try
                     {
                         if (File.Exists(archiveFileName)) File.Delete(archiveFileName);
                         // take care of tunneling issues http://support.microsoft.com/kb/172190
-                        File.SetCreationTime(actualFileName, currentDateTime);
+                        File.SetCreationTime(actualFileName, currentDateTime.UtcDateTime);
                         File.Move(actualFileName, archiveFileName);
                     }
                     catch (IOException)
@@ -1497,12 +1456,13 @@ namespace Tsharp
 
                 private void PurgeArchivedFiles(string archiveFileName)
                 {
-                    if (this.owner.maxArchivedFiles > 0)
+                    if (owner.maxArchivedFiles > 0)
                     {
                         var directoryName = Path.GetDirectoryName(archiveFileName);
                         var fileName = Path.GetFileName(archiveFileName);
 
-                        new RollingFlatFilePurger(directoryName, fileName, this.owner.maxArchivedFiles).Purge();
+                        new RollingFlatFilePurger(directoryName, fileName, owner.maxArchivedFiles)
+                            .Purge();
                     }
                 }
 
@@ -1516,19 +1476,21 @@ namespace Tsharp
                     StreamWriter currentWriter = null;
 
                     // replace writer with the tally keeping version if necessary for size rolling
-                    if ((this.owner.rollSizeInBytes > 0) && (this.managedWriter == null))
+                    if ((owner.rollSizeInBytes > 0) && (managedWriter == null))
                     {
-                        currentWriter = this.owner.Writer as StreamWriter;
+                        currentWriter = owner.Writer as StreamWriter;
                         if (currentWriter == null) return false;
-                        var actualFileName = ((FileStream)currentWriter.BaseStream).Name;
+                        var actualFileName = ((FileStream) currentWriter.BaseStream).Name;
 
                         currentWriter.Close();
 
                         FileStream fileStream = null;
                         try
                         {
-                            fileStream = File.Open(actualFileName, FileMode.Append, FileAccess.Write, FileShare.Read);
-                            this.managedWriter = new TallyKeepingFileStreamWriter(fileStream, GetEncodingWithFallback());
+                            fileStream = File.Open(actualFileName, FileMode.Append, FileAccess.Write,
+                                FileShare.Read);
+                            managedWriter = new TallyKeepingFileStreamWriter(fileStream,
+                                GetEncodingWithFallback());
                         }
                         catch (Exception)
                         {
@@ -1536,24 +1498,24 @@ namespace Tsharp
                             return false;
                         }
 
-                        this.owner.Writer = this.managedWriter;
+                        owner.Writer = managedWriter;
                     }
 
                     // compute the next roll date if necessary
-                    if ((this.owner.rollInterval != RollInterval.None) && (this.NextRollDateTime == null))
+                    if ((owner.rollInterval != RollInterval.None) && (NextRollDateTime == null))
                         try
                         {
                             // casting should be safe at this point - only file stream writers can be the writers for the owner trace listener.
                             // it should also happen rarely
-                            this.NextRollDateTime =
-                                this.CalculateNextRollDate(
+                            NextRollDateTime =
+                                CalculateNextRollDate(
                                     File.GetCreationTime(
-                                        ((FileStream)((StreamWriter)this.owner.Writer).BaseStream).Name));
+                                        ((FileStream) ((StreamWriter) owner.Writer).BaseStream).Name));
                         }
                         catch (Exception)
                         {
-                            this.NextRollDateTime = DateTime.MaxValue;
-                                // disable rolling if not date could be retrieved.
+                            NextRollDateTime = DateTimeOffset.MaxValue;
+                            // disable rolling if not date could be retrieved.
 
                             // there's a slight chance of error here - abort if this occurs and just let TWTL handle it without attempting to roll
                             return false;
@@ -1573,10 +1535,9 @@ namespace Tsharp
                 ///     .
                 /// </summary>
                 /// <param name="stream">The <see cref="FileStream" /> to write to.</param>
-                public TallyKeepingFileStreamWriter(FileStream stream)
-                    : base(stream)
+                public TallyKeepingFileStreamWriter(FileStream stream) : base(stream)
                 {
-                    this.Tally = stream.Length;
+                    Tally = stream.Length;
                 }
 
                 /// <summary>
@@ -1588,7 +1549,7 @@ namespace Tsharp
                 public TallyKeepingFileStreamWriter(FileStream stream, Encoding encoding)
                     : base(stream, encoding)
                 {
-                    this.Tally = stream.Length;
+                    Tally = stream.Length;
                 }
 
                 /// <summary>
@@ -1617,7 +1578,7 @@ namespace Tsharp
                 public override void Write(char value)
                 {
                     base.Write(value);
-                    this.Tally += this.Encoding.GetByteCount(new[] { value });
+                    Tally += Encoding.GetByteCount(new[] {value});
                 }
 
                 /// <summary>
@@ -1638,7 +1599,7 @@ namespace Tsharp
                 public override void Write(char[] buffer)
                 {
                     base.Write(buffer);
-                    this.Tally += this.Encoding.GetByteCount(buffer);
+                    Tally += Encoding.GetByteCount(buffer);
                 }
 
                 /// <summary>
@@ -1664,7 +1625,7 @@ namespace Tsharp
                 public override void Write(char[] buffer, int index, int count)
                 {
                     base.Write(buffer, index, count);
-                    this.Tally += this.Encoding.GetByteCount(buffer, index, count);
+                    Tally += Encoding.GetByteCount(buffer, index, count);
                 }
 
                 /// <summary>
@@ -1685,7 +1646,7 @@ namespace Tsharp
                 public override void Write(string value)
                 {
                     base.Write(value);
-                    this.Tally += this.Encoding.GetByteCount(value);
+                    Tally += Encoding.GetByteCount(value);
                 }
             }
         }
@@ -1702,17 +1663,12 @@ namespace Tsharp
 
             public LogSource()
             {
-                var listener = new RollingFlatFileTraceListener(
-                                   "App_Data/trace.log",
-                                   string.Empty,
-                                   string.Empty,
-                                   1024,
-                                   "yyyyMMddHHmmssfff",
-                                   "'archived'yyyyMMdd",
-                                   RollFileExistsBehavior.Increment,
-                                   RollInterval.Day);
+                var listener = new RollingFlatFileTraceListener("App_Data/trace.log",
+                    () => DateTimeOffset.Now.ToString("'>>'yyyy'-'MM'-'dd'T'HH':'mm':'ss.fffffffK"),
+                    null, 1024, "yyyyMMddHHmmss", "'archived'yyyyMMdd",
+                    RollFileExistsBehavior.Increment, RollInterval.Day);
 
-                this.Listeners = new TraceListener[] { listener };
+                Listeners = new TraceListener[] {listener};
             }
 
             /// <summary>
@@ -1725,9 +1681,9 @@ namespace Tsharp
             /// <param name="autoFlush">If Flush should be called on the Listeners after every write.</param>
             public LogSource(TraceListener[] traceListeners, bool autoFlush)
             {
-                this.Listeners = traceListeners;
+                Listeners = traceListeners;
 
-                this.AutoFlush = autoFlush;
+                AutoFlush = autoFlush;
             }
 
             /// <summary>
@@ -1746,20 +1702,20 @@ namespace Tsharp
             /// </summary>
             public void Dispose()
             {
-                this.Dispose(true);
+                Dispose(true);
                 GC.SuppressFinalize(this);
             }
 
             public void WriteLine(object logEntry)
             {
-                foreach (var item in this.Listeners)
+                foreach (var item in Listeners)
                 {
                     var listener = item;
                     try
                     {
                         if (!listener.IsThreadSafe) Monitor.Enter(listener);
                         listener.WriteLine(logEntry);
-                        if (this.AutoFlush) listener.Flush();
+                        if (AutoFlush) listener.Flush();
                     }
                     finally
                     {
@@ -1777,7 +1733,7 @@ namespace Tsharp
             /// </param>
             protected virtual void Dispose(bool disposing)
             {
-                if (disposing) foreach (var listener in this.Listeners) listener.Dispose();
+                if (disposing) foreach (var listener in Listeners) listener.Dispose();
             }
 
             /// <summary>
@@ -1785,7 +1741,7 @@ namespace Tsharp
             /// </summary>
             ~LogSource()
             {
-                this.Dispose(false);
+                Dispose(false);
             }
         }
 
@@ -1826,7 +1782,7 @@ namespace Tsharp
             /// <param name="filePath">File path</param>
             public void WriteCsv(CsvFile csvFile, string filePath)
             {
-                this.WriteCsv(csvFile, filePath, null);
+                WriteCsv(csvFile, filePath, null);
             }
 
             /// <summary>
@@ -1841,7 +1797,7 @@ namespace Tsharp
 
                 using (var writer = new StreamWriter(filePath, false, encoding ?? Encoding.Default))
                 {
-                    this.WriteToStream(csvFile, writer);
+                    WriteToStream(csvFile, writer);
                     writer.Flush();
                     writer.Close();
                 }
@@ -1854,7 +1810,7 @@ namespace Tsharp
             /// <param name="stream">Stream</param>
             public void WriteCsv(CsvFile csvFile, Stream stream)
             {
-                this.WriteCsv(csvFile, stream, null);
+                WriteCsv(csvFile, stream, null);
             }
 
             /// <summary>
@@ -1866,9 +1822,9 @@ namespace Tsharp
             public void WriteCsv(CsvFile csvFile, Stream stream, Encoding encoding)
             {
                 stream.Position = 0;
-                this._streamWriter = new StreamWriter(stream, encoding ?? Encoding.Default);
-                this.WriteToStream(csvFile, this._streamWriter);
-                this._streamWriter.Flush();
+                _streamWriter = new StreamWriter(stream, encoding ?? Encoding.Default);
+                WriteToStream(csvFile, _streamWriter);
+                _streamWriter.Flush();
                 stream.Position = 0;
             }
 
@@ -1884,13 +1840,16 @@ namespace Tsharp
 
                 using (var memoryStream = new MemoryStream())
                 {
-                    using (var writer = new StreamWriter(memoryStream, encoding ?? Encoding.Default))
+                    using (var writer = new StreamWriter(memoryStream, encoding ?? Encoding.Default)
+                    )
                     {
-                        this.WriteToStream(csvFile, writer);
+                        WriteToStream(csvFile, writer);
                         writer.Flush();
                         memoryStream.Position = 0;
 
-                        using (var reader = new StreamReader(memoryStream, encoding ?? Encoding.Default))
+                        using (
+                            var reader = new StreamReader(memoryStream, encoding ?? Encoding.Default)
+                        )
                         {
                             content = reader.ReadToEnd();
                             writer.Close();
@@ -1914,7 +1873,7 @@ namespace Tsharp
             /// <param name="filePath">File path</param>
             public void WriteCsv(DataTable dataTable, string filePath)
             {
-                this.WriteCsv(dataTable, filePath, null);
+                WriteCsv(dataTable, filePath, null);
             }
 
             /// <summary>
@@ -1929,7 +1888,7 @@ namespace Tsharp
 
                 using (var writer = new StreamWriter(filePath, false, encoding ?? Encoding.Default))
                 {
-                    this.WriteToStream(dataTable, writer);
+                    WriteToStream(dataTable, writer);
                     writer.Flush();
                     writer.Close();
                 }
@@ -1942,7 +1901,7 @@ namespace Tsharp
             /// <param name="stream">Stream</param>
             public void WriteCsv(DataTable dataTable, Stream stream)
             {
-                this.WriteCsv(dataTable, stream, null);
+                WriteCsv(dataTable, stream, null);
             }
 
             /// <summary>
@@ -1954,9 +1913,9 @@ namespace Tsharp
             public void WriteCsv(DataTable dataTable, Stream stream, Encoding encoding)
             {
                 stream.Position = 0;
-                this._streamWriter = new StreamWriter(stream, encoding ?? Encoding.Default);
-                this.WriteToStream(dataTable, this._streamWriter);
-                this._streamWriter.Flush();
+                _streamWriter = new StreamWriter(stream, encoding ?? Encoding.Default);
+                WriteToStream(dataTable, _streamWriter);
+                _streamWriter.Flush();
                 stream.Position = 0;
             }
 
@@ -1972,13 +1931,16 @@ namespace Tsharp
 
                 using (var memoryStream = new MemoryStream())
                 {
-                    using (var writer = new StreamWriter(memoryStream, encoding ?? Encoding.Default))
+                    using (var writer = new StreamWriter(memoryStream, encoding ?? Encoding.Default)
+                    )
                     {
-                        this.WriteToStream(dataTable, writer);
+                        WriteToStream(dataTable, writer);
                         writer.Flush();
                         memoryStream.Position = 0;
 
-                        using (var reader = new StreamReader(memoryStream, encoding ?? Encoding.Default))
+                        using (
+                            var reader = new StreamReader(memoryStream, encoding ?? Encoding.Default)
+                        )
                         {
                             content = reader.ReadToEnd();
                             writer.Close();
@@ -2000,9 +1962,9 @@ namespace Tsharp
             /// <param name="writer">TextWriter</param>
             private void WriteToStream(CsvFile csvFile, TextWriter writer)
             {
-                if (csvFile.Headers.Count > 0) this.WriteRecord(csvFile.Headers, writer);
+                if (csvFile.Headers.Count > 0) WriteRecord(csvFile.Headers, writer);
 
-                csvFile.Records.ForEach(record => this.WriteRecord(record.Fields, writer));
+                csvFile.Records.ForEach(record => WriteRecord(record.Fields, writer));
             }
 
             /// <summary>
@@ -2012,14 +1974,15 @@ namespace Tsharp
             /// <param name="writer">TextWriter</param>
             private void WriteToStream(DataTable dataTable, TextWriter writer)
             {
-                var fields = (from DataColumn column in dataTable.Columns select column.ColumnName).ToList();
-                this.WriteRecord(fields, writer);
+                var fields =
+                    (from DataColumn column in dataTable.Columns select column.ColumnName).ToList();
+                WriteRecord(fields, writer);
 
                 foreach (DataRow row in dataTable.Rows)
                 {
                     fields.Clear();
                     fields.AddRange(row.ItemArray.Select(o => o.ToString()));
-                    this.WriteRecord(fields, writer);
+                    WriteRecord(fields, writer);
                 }
             }
 
@@ -2036,19 +1999,17 @@ namespace Tsharp
                     var escapeQuotes = fields[i].Contains("\"");
                     var fieldValue = escapeQuotes ? fields[i].Replace("\"", "\"\"") : fields[i];
 
-                    if (this.ReplaceCarriageReturnsAndLineFeedsFromFieldValues
-                        && (fieldValue.Contains("\r") || fieldValue.Contains("\n")))
+                    if (ReplaceCarriageReturnsAndLineFeedsFromFieldValues &&
+                        (fieldValue.Contains("\r") || fieldValue.Contains("\n")))
                     {
                         quotesRequired = true;
-                        fieldValue = fieldValue.Replace("\r\n", this.CarriageReturnAndLineFeedReplacement);
-                        fieldValue = fieldValue.Replace("\r", this.CarriageReturnAndLineFeedReplacement);
-                        fieldValue = fieldValue.Replace("\n", this.CarriageReturnAndLineFeedReplacement);
+                        fieldValue = fieldValue.Replace("\r\n", CarriageReturnAndLineFeedReplacement);
+                        fieldValue = fieldValue.Replace("\r", CarriageReturnAndLineFeedReplacement);
+                        fieldValue = fieldValue.Replace("\n", CarriageReturnAndLineFeedReplacement);
                     }
 
-                    writer.Write(
-                        "{0}{1}{0}{2}",
-                        quotesRequired || escapeQuotes ? "\"" : string.Empty,
-                        fieldValue,
+                    writer.Write("{0}{1}{0}{2}",
+                        quotesRequired || escapeQuotes ? "\"" : string.Empty, fieldValue,
                         i < fields.Count - 1 ? "," : string.Empty);
                 }
 
@@ -2060,10 +2021,10 @@ namespace Tsharp
             /// </summary>
             public void Dispose()
             {
-                if (this._streamWriter == null) return;
+                if (_streamWriter == null) return;
 
-                this._streamWriter.Close();
-                this._streamWriter.Dispose();
+                _streamWriter.Close();
+                _streamWriter.Dispose();
             }
 
             #endregion Methods
@@ -2132,10 +2093,7 @@ namespace Tsharp
             /// </summary>
             public int? FieldCount
             {
-                get
-                {
-                    return this.Fields != null ? this.Fields.Count : (int?)null;
-                }
+                get { return Fields != null ? Fields.Count : (int?) null; }
             }
 
             #endregion Properties
@@ -2148,8 +2106,8 @@ namespace Tsharp
             /// <param name="filePath">File path</param>
             public CsvReader(string filePath)
             {
-                this._type = Type.File;
-                this.Initialise(filePath, Encoding.Default);
+                _type = Type.File;
+                Initialise(filePath, Encoding.Default);
             }
 
             /// <summary>
@@ -2159,8 +2117,8 @@ namespace Tsharp
             /// <param name="encoding">Encoding</param>
             public CsvReader(string filePath, Encoding encoding)
             {
-                this._type = Type.File;
-                this.Initialise(filePath, encoding);
+                _type = Type.File;
+                Initialise(filePath, encoding);
             }
 
             /// <summary>
@@ -2169,8 +2127,8 @@ namespace Tsharp
             /// <param name="stream">Stream</param>
             public CsvReader(Stream stream)
             {
-                this._type = Type.Stream;
-                this.Initialise(stream, Encoding.Default);
+                _type = Type.Stream;
+                Initialise(stream, Encoding.Default);
             }
 
             /// <summary>
@@ -2180,8 +2138,8 @@ namespace Tsharp
             /// <param name="encoding">Encoding</param>
             public CsvReader(Stream stream, Encoding encoding)
             {
-                this._type = Type.Stream;
-                this.Initialise(stream, encoding);
+                _type = Type.Stream;
+                Initialise(stream, encoding);
             }
 
             /// <summary>
@@ -2191,8 +2149,8 @@ namespace Tsharp
             /// <param name="csvContent"></param>
             public CsvReader(Encoding encoding, string csvContent)
             {
-                this._type = Type.String;
-                this.Initialise(encoding, csvContent);
+                _type = Type.String;
+                Initialise(encoding, csvContent);
             }
 
             #endregion Constructors
@@ -2206,10 +2164,12 @@ namespace Tsharp
             /// <param name="encoding"></param>
             private void Initialise(string filePath, Encoding encoding)
             {
-                if (!File.Exists(filePath)) throw new FileNotFoundException(string.Format("The file '{0}' does not exist.", filePath));
+                if (!File.Exists(filePath))
+                    throw new FileNotFoundException(string.Format("The file '{0}' does not exist.",
+                        filePath));
 
-                this._fileStream = File.OpenRead(filePath);
-                this.Initialise(this._fileStream, encoding);
+                _fileStream = File.OpenRead(filePath);
+                Initialise(_fileStream, encoding);
             }
 
             /// <summary>
@@ -2221,10 +2181,10 @@ namespace Tsharp
             {
                 if (stream == null) throw new ArgumentNullException("The supplied stream is null.");
 
-                this._stream = stream;
-                this._stream.Position = 0;
-                this._encoding = encoding ?? Encoding.Default;
-                this._streamReader = new StreamReader(this._stream, this._encoding);
+                _stream = stream;
+                _stream.Position = 0;
+                _encoding = encoding ?? Encoding.Default;
+                _streamReader = new StreamReader(_stream, _encoding);
             }
 
             /// <summary>
@@ -2234,15 +2194,16 @@ namespace Tsharp
             /// <param name="csvContent"></param>
             private void Initialise(Encoding encoding, string csvContent)
             {
-                if (csvContent == null) throw new ArgumentNullException("The supplied csvContent is null.");
+                if (csvContent == null)
+                    throw new ArgumentNullException("The supplied csvContent is null.");
 
-                this._encoding = encoding ?? Encoding.Default;
+                _encoding = encoding ?? Encoding.Default;
 
-                this._memoryStream = new MemoryStream(csvContent.Length);
-                this._streamWriter = new StreamWriter(this._memoryStream);
-                this._streamWriter.Write(csvContent);
-                this._streamWriter.Flush();
-                this.Initialise(this._memoryStream, encoding);
+                _memoryStream = new MemoryStream(csvContent.Length);
+                _streamWriter = new StreamWriter(_memoryStream);
+                _streamWriter.Write(csvContent);
+                _streamWriter.Flush();
+                Initialise(_memoryStream, encoding);
             }
 
             /// <summary>
@@ -2251,12 +2212,12 @@ namespace Tsharp
             /// <returns>True if a record was successfuly read, otherwise false</returns>
             public bool ReadNextRecord()
             {
-                this.Fields = null;
-                var line = this._streamReader.ReadLine();
+                Fields = null;
+                var line = _streamReader.ReadLine();
 
                 if (line == null) return false;
 
-                this.ParseLine(line);
+                ParseLine(line);
                 return true;
             }
 
@@ -2268,7 +2229,7 @@ namespace Tsharp
             /// <returns></returns>
             public DataTable ReadIntoDataTable()
             {
-                return this.ReadIntoDataTable(new System.Type[] { });
+                return ReadIntoDataTable(new System.Type[] {});
             }
 
             /// <summary>
@@ -2282,15 +2243,14 @@ namespace Tsharp
             {
                 var dataTable = new DataTable();
                 var addedHeader = false;
-                this._stream.Position = 0;
+                _stream.Position = 0;
 
-                while (this.ReadNextRecord())
+                while (ReadNextRecord())
                 {
                     if (!addedHeader)
                     {
-                        for (var i = 0; i < this.Fields.Count; i++)
-                            dataTable.Columns.Add(
-                                this.Fields[i],
+                        for (var i = 0; i < Fields.Count; i++)
+                            dataTable.Columns.Add(Fields[i],
                                 columnTypes.Length > 0 ? columnTypes[i] : typeof(string));
 
                         addedHeader = true;
@@ -2299,7 +2259,7 @@ namespace Tsharp
 
                     var row = dataTable.NewRow();
 
-                    for (var i = 0; i < this.Fields.Count; i++) row[i] = this.Fields[i];
+                    for (var i = 0; i < Fields.Count; i++) row[i] = Fields[i];
 
                     dataTable.Rows.Add(row);
                 }
@@ -2313,11 +2273,11 @@ namespace Tsharp
             /// <param name="line">Line</param>
             private void ParseLine(string line)
             {
-                this.Fields = new List<string>();
+                Fields = new List<string>();
                 var inColumn = false;
                 var inQuotes = false;
                 //_columnBuilder.Remove(0, _columnBuilder.Length);
-                this._columnBuilder.Length = 0;
+                _columnBuilder.Length = 0;
                 // Iterate through every character in the line
                 for (var i = 0; i < line.Length; i++)
                 {
@@ -2329,7 +2289,7 @@ namespace Tsharp
                         // If the current character is a double quote then the column value is contained within
                         // double quotes, otherwise append the next character
                         if (character == '"') inQuotes = true;
-                        else this._columnBuilder.Append(character);
+                        else _columnBuilder.Append(character);
 
                         inColumn = true;
                         continue;
@@ -2341,33 +2301,37 @@ namespace Tsharp
                         // If the current character is a double quote and the next character is a comma or we are at the end of the line
                         // we are now no longer within the column.
                         // Otherwise increment the loop counter as we are looking at an escaped double quote e.g. "" within a column
-                        if ((character == '"')
-                            && (((line.Length > i + 1) && (line[i + 1] == ',')) || (i + 1 == line.Length)))
+                        if ((character == '"') &&
+                            (((line.Length > i + 1) && (line[i + 1] == ',')) ||
+                             (i + 1 == line.Length)))
                         {
                             inQuotes = false;
                             inColumn = false;
                             i++;
                         }
-                        else if ((character == '"') && (line.Length > i + 1) && (line[i + 1] == '"')) i++;
+                        else if ((character == '"') && (line.Length > i + 1) && (line[i + 1] == '"'))
+                            i++;
                     }
                     else if (character == ',') inColumn = false;
 
                     // If we are no longer in the column clear the builder and add the columns to the list
                     if (!inColumn)
                     {
-                        this.Fields.Add(
-                            this.TrimColumns ? this._columnBuilder.ToString().Trim() : this._columnBuilder.ToString());
+                        Fields.Add(TrimColumns
+                            ? _columnBuilder.ToString().Trim()
+                            : _columnBuilder.ToString());
                         //_columnBuilder.Remove(0, _columnBuilder.Length);
-                        this._columnBuilder.Length = 0;
+                        _columnBuilder.Length = 0;
                     }
                     else // append the current column
-                        this._columnBuilder.Append(character);
+                        _columnBuilder.Append(character);
                 }
 
                 // If we are still inside a column add a new one
                 if (inColumn)
-                    this.Fields.Add(
-                        this.TrimColumns ? this._columnBuilder.ToString().Trim() : this._columnBuilder.ToString());
+                    Fields.Add(TrimColumns
+                        ? _columnBuilder.ToString().Trim()
+                        : _columnBuilder.ToString());
             }
 
             /// <summary>
@@ -2375,34 +2339,34 @@ namespace Tsharp
             /// </summary>
             public void Dispose()
             {
-                if (this._streamReader != null)
+                if (_streamReader != null)
                 {
-                    this._streamReader.Close();
-                    this._streamReader.Dispose();
+                    _streamReader.Close();
+                    _streamReader.Dispose();
                 }
 
-                if (this._streamWriter != null)
+                if (_streamWriter != null)
                 {
-                    this._streamWriter.Close();
-                    this._streamWriter.Dispose();
+                    _streamWriter.Close();
+                    _streamWriter.Dispose();
                 }
 
-                if (this._memoryStream != null)
+                if (_memoryStream != null)
                 {
-                    this._memoryStream.Close();
-                    this._memoryStream.Dispose();
+                    _memoryStream.Close();
+                    _memoryStream.Dispose();
                 }
 
-                if (this._fileStream != null)
+                if (_fileStream != null)
                 {
-                    this._fileStream.Close();
-                    this._fileStream.Dispose();
+                    _fileStream.Close();
+                    _fileStream.Dispose();
                 }
 
-                if (((this._type == Type.String) || (this._type == Type.File)) && (this._stream != null))
+                if (((_type == Type.String) || (_type == Type.File)) && (_stream != null))
                 {
-                    this._stream.Close();
-                    this._stream.Dispose();
+                    _stream.Close();
+                    _stream.Dispose();
                 }
             }
 
@@ -2432,10 +2396,7 @@ namespace Tsharp
             /// </summary>
             public int HeaderCount
             {
-                get
-                {
-                    return this.Headers.Count;
-                }
+                get { return Headers.Count; }
             }
 
             /// <summary>
@@ -2443,10 +2404,7 @@ namespace Tsharp
             /// </summary>
             public int RecordCount
             {
-                get
-                {
-                    return this.Records.Count;
-                }
+                get { return Records.Count; }
             }
 
             #endregion Properties
@@ -2462,11 +2420,11 @@ namespace Tsharp
             {
                 get
                 {
-                    if (recordIndex > this.Records.Count - 1)
+                    if (recordIndex > Records.Count - 1)
                         throw new IndexOutOfRangeException(
-                                  string.Format("There is no record at index {0}.", recordIndex));
+                            string.Format("There is no record at index {0}.", recordIndex));
 
-                    return this.Records[recordIndex];
+                    return Records[recordIndex];
                 }
             }
 
@@ -2480,29 +2438,29 @@ namespace Tsharp
             {
                 get
                 {
-                    if (recordIndex > this.Records.Count - 1)
+                    if (recordIndex > Records.Count - 1)
                         throw new IndexOutOfRangeException(
-                                  string.Format("There is no record at index {0}.", recordIndex));
+                            string.Format("There is no record at index {0}.", recordIndex));
 
-                    var record = this.Records[recordIndex];
+                    var record = Records[recordIndex];
                     if (fieldIndex > record.Fields.Count - 1)
                         throw new IndexOutOfRangeException(
-                                  string.Format(
-                                      "There is no field at index {0} in record {1}.",
-                                      fieldIndex,
-                                      recordIndex));
+                            string.Format("There is no field at index {0} in record {1}.",
+                                fieldIndex, recordIndex));
 
                     return record.Fields[fieldIndex];
                 }
                 set
                 {
-                    if (recordIndex > this.Records.Count - 1)
+                    if (recordIndex > Records.Count - 1)
                         throw new IndexOutOfRangeException(
-                                  string.Format("There is no record at index {0}.", recordIndex));
+                            string.Format("There is no record at index {0}.", recordIndex));
 
-                    var record = this.Records[recordIndex];
+                    var record = Records[recordIndex];
 
-                    if (fieldIndex > record.Fields.Count - 1) throw new IndexOutOfRangeException(string.Format("There is no field at index {0}.", fieldIndex));
+                    if (fieldIndex > record.Fields.Count - 1)
+                        throw new IndexOutOfRangeException(
+                            string.Format("There is no field at index {0}.", fieldIndex));
 
                     record.Fields[fieldIndex] = value;
                 }
@@ -2518,17 +2476,17 @@ namespace Tsharp
             {
                 get
                 {
-                    if (recordIndex > this.Records.Count - 1)
+                    if (recordIndex > Records.Count - 1)
                         throw new IndexOutOfRangeException(
-                                  string.Format("There is no record at index {0}.", recordIndex));
+                            string.Format("There is no record at index {0}.", recordIndex));
 
-                    var record = this.Records[recordIndex];
+                    var record = Records[recordIndex];
 
                     var fieldIndex = -1;
 
-                    for (var i = 0; i < this.Headers.Count; i++)
+                    for (var i = 0; i < Headers.Count; i++)
                     {
-                        if (string.Compare(this.Headers[i], fieldName) != 0) continue;
+                        if (string.Compare(Headers[i], fieldName) != 0) continue;
 
                         fieldIndex = i;
                         break;
@@ -2536,30 +2494,28 @@ namespace Tsharp
 
                     if (fieldIndex == -1)
                         throw new ArgumentException(
-                                  string.Format("There is no field header with the name '{0}'", fieldName));
+                            string.Format("There is no field header with the name '{0}'", fieldName));
 
                     if (fieldIndex > record.Fields.Count - 1)
                         throw new IndexOutOfRangeException(
-                                  string.Format(
-                                      "There is no field at index {0} in record {1}.",
-                                      fieldIndex,
-                                      recordIndex));
+                            string.Format("There is no field at index {0} in record {1}.",
+                                fieldIndex, recordIndex));
 
                     return record.Fields[fieldIndex];
                 }
                 set
                 {
-                    if (recordIndex > this.Records.Count - 1)
+                    if (recordIndex > Records.Count - 1)
                         throw new IndexOutOfRangeException(
-                                  string.Format("There is no record at index {0}.", recordIndex));
+                            string.Format("There is no record at index {0}.", recordIndex));
 
-                    var record = this.Records[recordIndex];
+                    var record = Records[recordIndex];
 
                     var fieldIndex = -1;
 
-                    for (var i = 0; i < this.Headers.Count; i++)
+                    for (var i = 0; i < Headers.Count; i++)
                     {
-                        if (string.Compare(this.Headers[i], fieldName) != 0) continue;
+                        if (string.Compare(Headers[i], fieldName) != 0) continue;
 
                         fieldIndex = i;
                         break;
@@ -2567,14 +2523,12 @@ namespace Tsharp
 
                     if (fieldIndex == -1)
                         throw new ArgumentException(
-                                  string.Format("There is no field header with the name '{0}'", fieldName));
+                            string.Format("There is no field header with the name '{0}'", fieldName));
 
                     if (fieldIndex > record.Fields.Count - 1)
                         throw new IndexOutOfRangeException(
-                                  string.Format(
-                                      "There is no field at index {0} in record {1}.",
-                                      fieldIndex,
-                                      recordIndex));
+                            string.Format("There is no field at index {0} in record {1}.",
+                                fieldIndex, recordIndex));
 
                     record.Fields[fieldIndex] = value;
                 }
@@ -2591,7 +2545,7 @@ namespace Tsharp
             /// <param name="hasHeaderRow">True if the file has a header row, otherwise false</param>
             public void Populate(string filePath, bool hasHeaderRow)
             {
-                this.Populate(filePath, null, hasHeaderRow, false);
+                Populate(filePath, null, hasHeaderRow, false);
             }
 
             /// <summary>
@@ -2602,7 +2556,7 @@ namespace Tsharp
             /// <param name="trimColumns">True if column values should be trimmed, otherwise false</param>
             public void Populate(string filePath, bool hasHeaderRow, bool trimColumns)
             {
-                this.Populate(filePath, null, hasHeaderRow, trimColumns);
+                Populate(filePath, null, hasHeaderRow, trimColumns);
             }
 
             /// <summary>
@@ -2612,16 +2566,14 @@ namespace Tsharp
             /// <param name="encoding">Encoding</param>
             /// <param name="hasHeaderRow">True if the file has a header row, otherwise false</param>
             /// <param name="trimColumns">True if column values should be trimmed, otherwise false</param>
-            public void Populate(string filePath, Encoding encoding, bool hasHeaderRow, bool trimColumns)
+            public void Populate(
+                string filePath, Encoding encoding, bool hasHeaderRow, bool trimColumns)
             {
                 using (
                     var reader = new CsvReader(filePath, encoding)
-                                     {
-                                         HasHeaderRow = hasHeaderRow,
-                                         TrimColumns = trimColumns
-                                     })
+                        {HasHeaderRow = hasHeaderRow, TrimColumns = trimColumns})
                 {
-                    this.PopulateCsvFile(reader);
+                    PopulateCsvFile(reader);
                 }
             }
 
@@ -2632,7 +2584,7 @@ namespace Tsharp
             /// <param name="hasHeaderRow">True if the file has a header row, otherwise false</param>
             public void Populate(Stream stream, bool hasHeaderRow)
             {
-                this.Populate(stream, null, hasHeaderRow, false);
+                Populate(stream, null, hasHeaderRow, false);
             }
 
             /// <summary>
@@ -2643,7 +2595,7 @@ namespace Tsharp
             /// <param name="trimColumns">True if column values should be trimmed, otherwise false</param>
             public void Populate(Stream stream, bool hasHeaderRow, bool trimColumns)
             {
-                this.Populate(stream, null, hasHeaderRow, trimColumns);
+                Populate(stream, null, hasHeaderRow, trimColumns);
             }
 
             /// <summary>
@@ -2653,16 +2605,14 @@ namespace Tsharp
             /// <param name="encoding">Encoding</param>
             /// <param name="hasHeaderRow">True if the file has a header row, otherwise false</param>
             /// <param name="trimColumns">True if column values should be trimmed, otherwise false</param>
-            public void Populate(Stream stream, Encoding encoding, bool hasHeaderRow, bool trimColumns)
+            public void Populate(
+                Stream stream, Encoding encoding, bool hasHeaderRow, bool trimColumns)
             {
                 using (
                     var reader = new CsvReader(stream, encoding)
-                                     {
-                                         HasHeaderRow = hasHeaderRow,
-                                         TrimColumns = trimColumns
-                                     })
+                        {HasHeaderRow = hasHeaderRow, TrimColumns = trimColumns})
                 {
-                    this.PopulateCsvFile(reader);
+                    PopulateCsvFile(reader);
                 }
             }
 
@@ -2673,7 +2623,7 @@ namespace Tsharp
             /// <param name="csvContent">Csv text</param>
             public void Populate(bool hasHeaderRow, string csvContent)
             {
-                this.Populate(hasHeaderRow, csvContent, null, false);
+                Populate(hasHeaderRow, csvContent, null, false);
             }
 
             /// <summary>
@@ -2684,7 +2634,7 @@ namespace Tsharp
             /// <param name="trimColumns">True if column values should be trimmed, otherwise false</param>
             public void Populate(bool hasHeaderRow, string csvContent, bool trimColumns)
             {
-                this.Populate(hasHeaderRow, csvContent, null, trimColumns);
+                Populate(hasHeaderRow, csvContent, null, trimColumns);
             }
 
             /// <summary>
@@ -2694,16 +2644,14 @@ namespace Tsharp
             /// <param name="csvContent">Csv text</param>
             /// <param name="encoding">Encoding</param>
             /// <param name="trimColumns">True if column values should be trimmed, otherwise false</param>
-            public void Populate(bool hasHeaderRow, string csvContent, Encoding encoding, bool trimColumns)
+            public void Populate(
+                bool hasHeaderRow, string csvContent, Encoding encoding, bool trimColumns)
             {
                 using (
                     var reader = new CsvReader(encoding, csvContent)
-                                     {
-                                         HasHeaderRow = hasHeaderRow,
-                                         TrimColumns = trimColumns
-                                     })
+                        {HasHeaderRow = hasHeaderRow, TrimColumns = trimColumns})
                 {
-                    this.PopulateCsvFile(reader);
+                    PopulateCsvFile(reader);
                 }
             }
 
@@ -2713,8 +2661,8 @@ namespace Tsharp
             /// <param name="reader">CsvReader</param>
             private void PopulateCsvFile(CsvReader reader)
             {
-                this.Headers.Clear();
-                this.Records.Clear();
+                Headers.Clear();
+                Records.Clear();
 
                 var addedHeader = false;
 
@@ -2722,14 +2670,14 @@ namespace Tsharp
                 {
                     if (reader.HasHeaderRow && !addedHeader)
                     {
-                        reader.Fields.ForEach(field => this.Headers.Add(field));
+                        reader.Fields.ForEach(field => Headers.Add(field));
                         addedHeader = true;
                         continue;
                     }
 
                     var record = new CsvRecord();
                     reader.Fields.ForEach(field => record.Fields.Add(field));
-                    this.Records.Add(record);
+                    Records.Add(record);
                 }
             }
 
@@ -2762,14 +2710,10 @@ namespace Tsharp
             /// </summary>
             public int FieldCount
             {
-                get
-                {
-                    return this.Fields.Count;
-                }
+                get { return Fields.Count; }
             }
 
             #endregion Properties
         }
     }
-    
 }

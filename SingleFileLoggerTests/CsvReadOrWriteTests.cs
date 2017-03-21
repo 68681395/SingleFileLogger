@@ -6,12 +6,11 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using static Tsharp.SimpleLogger;
 
 namespace Tsharp
 {
-    using static SimpleFileLogger;
-
-
+    
     /// <summary>
     ///     Summary description for UnitTests
     /// </summary>
@@ -728,15 +727,15 @@ data 1,""data, 2"",data 3
             var rsg = new RandomStringGenerator(true, true, true, true);
             var file = "";
             using (
-                var writer = new SimpleFileLogger.RollingFlatFileTraceListener(
+                var writer = new SimpleLogger.RollingFlatFileTraceListener(
                     "trace.log",
                     null,
                     null,
                     512,
                     "HHmmss",
                     "yyyyMMdd",
-                    SimpleFileLogger.RollFileExistsBehavior.Increment,
-                    SimpleFileLogger.RollInterval.Day))
+                    SimpleLogger.RollFileExistsBehavior.Increment,
+                    SimpleLogger.RollInterval.Day))
             {
 
                 file = writer.Name;
