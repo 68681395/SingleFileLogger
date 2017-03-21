@@ -1678,7 +1678,7 @@ namespace Tsharp
             {
                 var listener = new RollingFlatFileTraceListener("App_Data/trace.log",
                     () => DateTimeOffset.Now.ToString("'>>'yyyy'-'MM'-'dd'T'HH':'mm':'ss.fffffffK"),
-                    null, 1024, "yyyyMMddHHmmss", "'archived'yyyyMMdd",
+                    null, 5120, "yyyyMMddHHmm", "'archived'yyyyMMdd",
                     RollFileExistsBehavior.Increment, RollInterval.Day);
 
                 Listeners = new TraceListener[] { listener };
