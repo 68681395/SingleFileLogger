@@ -4848,9 +4848,49 @@ namespace Tsharp
 
         /// <summary>
         /// Read text based configuration file based on key value pairs.
+        /// open source from https://github.com/virtualdreams/configfile  MIT license
+        /// need to do a enhancement to be a safereader
         /// </summary>
         public class ConfigReader
         {
+            private readonly FileSystemWatcher watcher = new FileSystemWatcher();
+            private string _filename;
+            /// <summary>
+            /// Initialize new instance and read the configuration from file.
+            /// </summary>
+            /// <param name="filename"></param>
+            public ConfigReader(string a)
+            {
+                _filename = EnvironmentHelper.ReplaceEnvironmentVariables(a);
+                watcher.Path = Path.GetDirectoryName(_filename);
+                watcher.Filter = Path.GetFileName(_filename);
+                watcher.Changed += new FileSystemEventHandler(OnProcess);
+                watcher.Created += new FileSystemEventHandler(OnProcess);
+                //watcher.Deleted += new FileSystemEventHandler(OnProcess);
+                watcher.Renamed += new RenamedEventHandler(OnRenamed);
+                watcher.EnableRaisingEvents = true;
+                watcher.NotifyFilter = NotifyFilters.CreationTime | NotifyFilters.FileName
+                                       | NotifyFilters.LastWrite | NotifyFilters.Size;
+                watcher.IncludeSubdirectories = false;
+
+
+                if (String.IsNullOrEmpty(_filename))
+                {
+                    throw new ArgumentNullException(_filename);
+                }
+                Open(_filename);
+            }
+
+            private void OnRenamed(object sender, RenamedEventArgs e)
+            {
+                //e.o
+            }
+            private void OnProcess(object sender, FileSystemEventArgs e)
+            {
+                Open(_filename);
+                ConfigChange?.Invoke(sender, this);
+            }
+
             /// <summary>
             /// Hold the key value pairs.
             /// </summary>
@@ -4860,7 +4900,7 @@ namespace Tsharp
             /// Occurs before a new key is added.
             /// </summary>
             public event EventHandler<ConfigReaderEventArgs> OnKeyAdd;
-
+            public event EventHandler<ConfigReader> ConfigChange;
             /// <summary>
             /// Occurs before a existing key is overwritten.
             /// </summary>
@@ -4871,36 +4911,7 @@ namespace Tsharp
             /// </summary>
             private List<string> _here = new List<string>();
 
-            /// <summary>
-            /// Initialize a new instance.
-            /// </summary>
-            public ConfigReader()
-            { }
 
-            /// <summary>
-            /// Initialize new instance and read the configuration from file.
-            /// </summary>
-            /// <param name="filename"></param>
-            public ConfigReader(string filename)
-            {
-                if (String.IsNullOrEmpty(filename))
-                {
-                    throw new ArgumentNullException(filename);
-                }
-                Open(filename);
-            }
-
-            /// <summary>
-            /// Initialize new instance and read from stream.
-            /// </summary>
-            /// <param name="stream"></param>
-            public ConfigReader(Stream stream)
-            {
-                if (stream == null)
-                    throw new ArgumentException("stream");
-
-                Open(stream);
-            }
 
             /// <summary>
             /// Open configuration file and clear existing values.
@@ -4909,31 +4920,23 @@ namespace Tsharp
             public void Open(string filename)
             {
                 if (!File.Exists(filename))
-                    throw new FileNotFoundException("File not found.", filename);
-
-                _configValues.Clear();
-
-                Parse(() => File.OpenRead(filename));
-            }
-
-            /// <summary>
-            /// Read stream and clear existing values.
-            /// </summary>
-            /// <param name="stream"></param>
-            public void Open(Stream stream)
-            {
-                if (stream == null)
-                    throw new ArgumentException("stream");
-
-                _configValues.Clear();
-
-                using (var ms = new MemoryStream())
                 {
-                    stream.CopyTo(ms);
-                    ms.Position = 0;
+                    try
+                    {
+                        File.Create(filename);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e);
+                    }
 
-                    Parse(() => ms);
                 }
+                if (!File.Exists(filename))
+                    return;
+                _configValues.Clear();
+                
+                using (var stream = File.OpenRead(filename))
+                    Parse(() => stream);
             }
 
             /// <summary>
@@ -5159,16 +5162,14 @@ namespace Tsharp
                 var e = new ConfigReaderEventArgs(key, value);
                 if (!_configValues.ContainsKey(key))
                 {
-                    if (OnKeyAdd != null)
-                        OnKeyAdd(this, e);
+                    OnKeyAdd?.Invoke(this, e);
 
                     if (!e.Decline)
                         _configValues.Add(key, value);
                 }
                 else
                 {
-                    if (OnKeyChange != null)
-                        OnKeyChange(this, e);
+                    OnKeyChange?.Invoke(this, e);
 
                     if (!e.Decline)
                         _configValues[key] = value;
@@ -5360,6 +5361,7 @@ namespace Tsharp
 
         /// <summary>
         /// Write text based configuration file based on key value pairs.
+        /// open source from https://github.com/virtualdreams/configfile  MIT license
         /// </summary>
         public class ConfigWriter
         {
@@ -5456,6 +5458,7 @@ namespace Tsharp
             /// <param name="key">The key.</param>
             /// <param name="value">The value.</param>
             /// <param name="provider">The format provider.</param>
+            /// <exception cref="ConfigException"></exception>
             public void AddValue<T>(string key, T value, IFormatProvider provider) where T : IConvertible
             {
                 if (String.IsNullOrEmpty(key))
