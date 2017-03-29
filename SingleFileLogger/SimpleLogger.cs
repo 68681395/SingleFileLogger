@@ -13,11 +13,17 @@
 #region USING BLOCK
 
 using System;
+using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Configuration;
 using System.Data;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.Versioning;
 using System.Security;
 using System.Security.Permissions;
@@ -29,8 +35,2114 @@ using System.Threading;
 
 namespace Tsharp
 {
+
     public static class SimpleLogger
     {
+        public delegate string FormatMessageHandler(string format, params object[] args);
+        public interface ILog
+        {
+            /// <summary>
+            /// Log a message object with the <see cref="LogLevel.Trace"/> level.
+            /// </summary>
+            /// <param name="message">The message object to log.</param>
+            void Trace(object message);
+
+            /// <summary>
+            /// Log a message object with the <see cref="LogLevel.Trace"/> level including
+            /// the stack trace of the <see cref="Exception"/> passed
+            /// as a parameter.
+            /// </summary>
+            /// <param name="message">The message object to log.</param>
+            /// <param name="exception">The exception to log, including its stack trace.</param>
+            void Trace(object message, Exception exception);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Trace"/> level.
+            /// </summary>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="args">the list of format arguments</param>
+            void TraceFormat(string format, params object[] args);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Trace"/> level.
+            /// </summary>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="exception">The exception to log.</param>
+            /// <param name="args">the list of format arguments</param>
+            void TraceFormat(string format, Exception exception, params object[] args);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Trace"/> level.
+            /// </summary>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="args"></param>
+            void TraceFormat(IFormatProvider formatProvider, string format, params object[] args);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Trace"/> level.
+            /// </summary>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="exception">The exception to log.</param>
+            /// <param name="args"></param>
+            void TraceFormat(IFormatProvider formatProvider, string format, Exception exception, params object[] args);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Trace"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            void Trace(Action<FormatMessageHandler> formatMessageCallback);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Trace"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            /// <param name="exception">The exception to log, including its stack trace.</param>
+            void Trace(Action<FormatMessageHandler> formatMessageCallback, Exception exception);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Trace"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            void Trace(IFormatProvider formatProvider, Action<FormatMessageHandler> formatMessageCallback);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Trace"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            /// <param name="exception">The exception to log, including its stack trace.</param>
+            void Trace(IFormatProvider formatProvider, Action<FormatMessageHandler> formatMessageCallback, Exception exception);
+
+            /// <summary>
+            /// Log a message object with the <see cref="LogLevel.Debug"/> level.
+            /// </summary>
+            /// <param name="message">The message object to log.</param>
+            void Debug(object message);
+
+            /// <summary>
+            /// Log a message object with the <see cref="LogLevel.Debug"/> level including
+            /// the stack trace of the <see cref="Exception"/> passed
+            /// as a parameter.
+            /// </summary>
+            /// <param name="message">The message object to log.</param>
+            /// <param name="exception">The exception to log, including its stack trace.</param>
+            void Debug(object message, Exception exception);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Debug"/> level.
+            /// </summary>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="args">the list of format arguments</param>
+            void DebugFormat(string format, params object[] args);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Debug"/> level.
+            /// </summary>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="exception">The exception to log.</param>
+            /// <param name="args">the list of format arguments</param>
+            void DebugFormat(string format, Exception exception, params object[] args);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Debug"/> level.
+            /// </summary>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="args"></param>
+            void DebugFormat(IFormatProvider formatProvider, string format, params object[] args);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Debug"/> level.
+            /// </summary>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="exception">The exception to log.</param>
+            /// <param name="args"></param>
+            void DebugFormat(IFormatProvider formatProvider, string format, Exception exception, params object[] args);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Debug"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            void Debug(Action<FormatMessageHandler> formatMessageCallback);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Debug"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            /// <param name="exception">The exception to log, including its stack trace.</param>
+            void Debug(Action<FormatMessageHandler> formatMessageCallback, Exception exception);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Debug"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            void Debug(IFormatProvider formatProvider, Action<FormatMessageHandler> formatMessageCallback);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Debug"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            /// <param name="exception">The exception to log, including its stack Debug.</param>
+            void Debug(IFormatProvider formatProvider, Action<FormatMessageHandler> formatMessageCallback, Exception exception);
+
+            /// <summary>
+            /// Log a message object with the <see cref="LogLevel.Info"/> level.
+            /// </summary>
+            /// <param name="message">The message object to log.</param>
+            void Info(object message);
+
+            /// <summary>
+            /// Log a message object with the <see cref="LogLevel.Info"/> level including
+            /// the stack trace of the <see cref="Exception"/> passed
+            /// as a parameter.
+            /// </summary>
+            /// <param name="message">The message object to log.</param>
+            /// <param name="exception">The exception to log, including its stack trace.</param>
+            void Info(object message, Exception exception);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Info"/> level.
+            /// </summary>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="args">the list of format arguments</param>
+            void InfoFormat(string format, params object[] args);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Info"/> level.
+            /// </summary>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="exception">The exception to log.</param>
+            /// <param name="args">the list of format arguments</param>
+            void InfoFormat(string format, Exception exception, params object[] args);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Info"/> level.
+            /// </summary>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="args"></param>
+            void InfoFormat(IFormatProvider formatProvider, string format, params object[] args);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Info"/> level.
+            /// </summary>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="exception">The exception to log.</param>
+            /// <param name="args"></param>
+            void InfoFormat(IFormatProvider formatProvider, string format, Exception exception, params object[] args);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Info"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            void Info(Action<FormatMessageHandler> formatMessageCallback);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Info"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            /// <param name="exception">The exception to log, including its stack trace.</param>
+            void Info(Action<FormatMessageHandler> formatMessageCallback, Exception exception);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Info"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            void Info(IFormatProvider formatProvider, Action<FormatMessageHandler> formatMessageCallback);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Info"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            /// <param name="exception">The exception to log, including its stack Info.</param>
+            void Info(IFormatProvider formatProvider, Action<FormatMessageHandler> formatMessageCallback, Exception exception);
+
+            /// <summary>
+            /// Log a message object with the <see cref="LogLevel.Warn"/> level.
+            /// </summary>
+            /// <param name="message">The message object to log.</param>
+            void Warn(object message);
+
+            /// <summary>
+            /// Log a message object with the <see cref="LogLevel.Warn"/> level including
+            /// the stack trace of the <see cref="Exception"/> passed
+            /// as a parameter.
+            /// </summary>
+            /// <param name="message">The message object to log.</param>
+            /// <param name="exception">The exception to log, including its stack trace.</param>
+            void Warn(object message, Exception exception);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Warn"/> level.
+            /// </summary>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="args">the list of format arguments</param>
+            void WarnFormat(string format, params object[] args);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Warn"/> level.
+            /// </summary>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="exception">The exception to log.</param>
+            /// <param name="args">the list of format arguments</param>
+            void WarnFormat(string format, Exception exception, params object[] args);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Warn"/> level.
+            /// </summary>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="args"></param>
+            void WarnFormat(IFormatProvider formatProvider, string format, params object[] args);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Warn"/> level.
+            /// </summary>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="exception">The exception to log.</param>
+            /// <param name="args"></param>
+            void WarnFormat(IFormatProvider formatProvider, string format, Exception exception, params object[] args);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Warn"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            void Warn(Action<FormatMessageHandler> formatMessageCallback);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Warn"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            /// <param name="exception">The exception to log, including its stack trace.</param>
+            void Warn(Action<FormatMessageHandler> formatMessageCallback, Exception exception);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Warn"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            void Warn(IFormatProvider formatProvider, Action<FormatMessageHandler> formatMessageCallback);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Warn"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            /// <param name="exception">The exception to log, including its stack Warn.</param>
+            void Warn(IFormatProvider formatProvider, Action<FormatMessageHandler> formatMessageCallback, Exception exception);
+
+            /// <summary>
+            /// Log a message object with the <see cref="LogLevel.Error"/> level.
+            /// </summary>
+            /// <param name="message">The message object to log.</param>
+            void Error(object message);
+
+            /// <summary>
+            /// Log a message object with the <see cref="LogLevel.Error"/> level including
+            /// the stack trace of the <see cref="Exception"/> passed
+            /// as a parameter.
+            /// </summary>
+            /// <param name="message">The message object to log.</param>
+            /// <param name="exception">The exception to log, including its stack trace.</param>
+            void Error(object message, Exception exception);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Error"/> level.
+            /// </summary>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="args">the list of format arguments</param>
+            void ErrorFormat(string format, params object[] args);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Error"/> level.
+            /// </summary>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="exception">The exception to log.</param>
+            /// <param name="args">the list of format arguments</param>
+            void ErrorFormat(string format, Exception exception, params object[] args);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Error"/> level.
+            /// </summary>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="args"></param>
+            void ErrorFormat(IFormatProvider formatProvider, string format, params object[] args);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Error"/> level.
+            /// </summary>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="exception">The exception to log.</param>
+            /// <param name="args"></param>
+            void ErrorFormat(IFormatProvider formatProvider, string format, Exception exception, params object[] args);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Error"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            void Error(Action<FormatMessageHandler> formatMessageCallback);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Error"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            /// <param name="exception">The exception to log, including its stack trace.</param>
+            void Error(Action<FormatMessageHandler> formatMessageCallback, Exception exception);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Error"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            void Error(IFormatProvider formatProvider, Action<FormatMessageHandler> formatMessageCallback);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Error"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            /// <param name="exception">The exception to log, including its stack Error.</param>
+            void Error(IFormatProvider formatProvider, Action<FormatMessageHandler> formatMessageCallback, Exception exception);
+
+            /// <summary>
+            /// Log a message object with the <see cref="LogLevel.Fatal"/> level.
+            /// </summary>
+            /// <param name="message">The message object to log.</param>
+            void Fatal(object message);
+
+            /// <summary>
+            /// Log a message object with the <see cref="LogLevel.Fatal"/> level including
+            /// the stack trace of the <see cref="Exception"/> passed
+            /// as a parameter.
+            /// </summary>
+            /// <param name="message">The message object to log.</param>
+            /// <param name="exception">The exception to log, including its stack trace.</param>
+            void Fatal(object message, Exception exception);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Fatal"/> level.
+            /// </summary>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="args">the list of format arguments</param>
+            void FatalFormat(string format, params object[] args);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Fatal"/> level.
+            /// </summary>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="exception">The exception to log.</param>
+            /// <param name="args">the list of format arguments</param>
+            void FatalFormat(string format, Exception exception, params object[] args);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Fatal"/> level.
+            /// </summary>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="args"></param>
+            void FatalFormat(IFormatProvider formatProvider, string format, params object[] args);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Fatal"/> level.
+            /// </summary>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="exception">The exception to log.</param>
+            /// <param name="args"></param>
+            void FatalFormat(IFormatProvider formatProvider, string format, Exception exception, params object[] args);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Fatal"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            void Fatal(Action<FormatMessageHandler> formatMessageCallback);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Fatal"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            /// <param name="exception">The exception to log, including its stack trace.</param>
+            void Fatal(Action<FormatMessageHandler> formatMessageCallback, Exception exception);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Fatal"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            void Fatal(IFormatProvider formatProvider, Action<FormatMessageHandler> formatMessageCallback);
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Fatal"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            /// <param name="exception">The exception to log, including its stack Fatal.</param>
+            void Fatal(IFormatProvider formatProvider, Action<FormatMessageHandler> formatMessageCallback, Exception exception);
+
+            /// <summary>
+            /// Checks if this logger is enabled for the <see cref="LogLevel.Trace"/> level.
+            /// </summary>
+            bool IsTraceEnabled
+            {
+                get;
+            }
+
+            /// <summary>
+            /// Checks if this logger is enabled for the <see cref="LogLevel.Debug"/> level.
+            /// </summary>
+            bool IsDebugEnabled
+            {
+                get;
+            }
+
+            /// <summary>
+            /// Checks if this logger is enabled for the <see cref="LogLevel.Error"/> level.
+            /// </summary>
+            bool IsErrorEnabled
+            {
+                get;
+            }
+
+            /// <summary>
+            /// Checks if this logger is enabled for the <see cref="LogLevel.Fatal"/> level.
+            /// </summary>
+            bool IsFatalEnabled
+            {
+                get;
+            }
+
+            /// <summary>
+            /// Checks if this logger is enabled for the <see cref="LogLevel.Info"/> level.
+            /// </summary>
+            bool IsInfoEnabled
+            {
+                get;
+            }
+
+            /// <summary>
+            /// Checks if this logger is enabled for the <see cref="LogLevel.Warn"/> level.
+            /// </summary>
+            bool IsWarnEnabled
+            {
+                get;
+            }
+        }
+        public abstract class AbstractLogger : ILog
+        {
+            #region FormatMessageCallbackFormattedMessage
+
+            private class FormatMessageCallbackFormattedMessage
+            {
+                private volatile string cachedMessage;
+
+                private readonly IFormatProvider formatProvider;
+                private readonly Action<FormatMessageHandler> formatMessageCallback;
+
+                public FormatMessageCallbackFormattedMessage(Action<FormatMessageHandler> formatMessageCallback)
+                {
+                    this.formatMessageCallback = formatMessageCallback;
+                }
+
+                public FormatMessageCallbackFormattedMessage(IFormatProvider formatProvider, Action<FormatMessageHandler> formatMessageCallback)
+                {
+                    this.formatProvider = formatProvider;
+                    this.formatMessageCallback = formatMessageCallback;
+                }
+
+                public override string ToString()
+                {
+                    if (cachedMessage == null && formatMessageCallback != null)
+                    {
+                        formatMessageCallback(new FormatMessageHandler(FormatMessage));
+                    }
+                    return cachedMessage;
+                }
+
+                private string FormatMessage(string format, params object[] args)
+                {
+                    cachedMessage = string.Format(formatProvider, format, args);
+                    return cachedMessage;
+                }
+            }
+
+            #endregion
+
+            #region StringFormatFormattedMessage
+
+            private class StringFormatFormattedMessage
+            {
+                private volatile string cachedMessage;
+
+                private readonly IFormatProvider FormatProvider;
+                private readonly string Message;
+                private readonly object[] Args;
+
+                public StringFormatFormattedMessage(IFormatProvider formatProvider, string message, params object[] args)
+                {
+                    FormatProvider = formatProvider;
+                    Message = message;
+                    Args = args;
+                }
+
+                public override string ToString()
+                {
+                    if (cachedMessage == null && Message != null)
+                    {
+                        cachedMessage = string.Format(FormatProvider, Message, Args);
+                    }
+                    return cachedMessage;
+                }
+            }
+
+            #endregion
+
+            /// <summary>
+            /// Represents a method responsible for writing a message to the log system.
+            /// </summary>
+            protected delegate void WriteHandler(LogLevel level, object message, Exception exception);
+
+            /// <summary>
+            /// Holds the method for writing a message to the log system.
+            /// </summary>
+            private readonly WriteHandler Write;
+
+            /// <summary>
+            /// Creates a new logger instance using <see cref="WriteInternal"/> for 
+            /// writing log events to the underlying log system.
+            /// </summary>
+            /// <seealso cref="GetWriteHandler"/>
+            protected AbstractLogger()
+            {
+                Write = GetWriteHandler();
+                if (Write == null)
+                {
+                    Write = new WriteHandler(WriteInternal);
+                }
+            }
+
+            /// <summary>
+            /// Override this method to use a different method than <see cref="WriteInternal"/> 
+            /// for writing log events to the underlying log system.
+            /// </summary>
+            /// <remarks>
+            /// Usually you don't need to override thise method. The default implementation returns
+            /// <c>null</c> to indicate that the default handler <see cref="WriteInternal"/> should be 
+            /// used.
+            /// </remarks>
+            protected virtual WriteHandler GetWriteHandler()
+            {
+                return null;
+            }
+
+            /// <summary>
+            /// Checks if this logger is enabled for the <see cref="LogLevel.Trace"/> level.
+            /// </summary>
+            /// <remarks>
+            /// Override this in your derived class to comply with the underlying logging system
+            /// </remarks>
+            public abstract bool IsTraceEnabled { get; }
+
+            /// <summary>
+            /// Checks if this logger is enabled for the <see cref="LogLevel.Debug"/> level.
+            /// </summary>
+            /// <remarks>
+            /// Override this in your derived class to comply with the underlying logging system
+            /// </remarks>
+            public abstract bool IsDebugEnabled { get; }
+
+            /// <summary>
+            /// Checks if this logger is enabled for the <see cref="LogLevel.Info"/> level.
+            /// </summary>
+            /// <remarks>
+            /// Override this in your derived class to comply with the underlying logging system
+            /// </remarks>
+            public abstract bool IsInfoEnabled { get; }
+
+            /// <summary>
+            /// Checks if this logger is enabled for the <see cref="LogLevel.Warn"/> level.
+            /// </summary>
+            /// <remarks>
+            /// Override this in your derived class to comply with the underlying logging system
+            /// </remarks>
+            public abstract bool IsWarnEnabled { get; }
+
+            /// <summary>
+            /// Checks if this logger is enabled for the <see cref="LogLevel.Error"/> level.
+            /// </summary>
+            /// <remarks>
+            /// Override this in your derived class to comply with the underlying logging system
+            /// </remarks>
+            public abstract bool IsErrorEnabled { get; }
+
+            /// <summary>
+            /// Checks if this logger is enabled for the <see cref="LogLevel.Fatal"/> level.
+            /// </summary>
+            /// <remarks>
+            /// Override this in your derived class to comply with the underlying logging system
+            /// </remarks>
+            public abstract bool IsFatalEnabled { get; }
+
+            /// <summary>
+            /// Actually sends the message to the underlying log system.
+            /// </summary>
+            /// <param name="level">the level of this log event.</param>
+            /// <param name="message">the message to log</param>
+            /// <param name="exception">the exception to log (may be null)</param>
+            protected abstract void WriteInternal(LogLevel level, object message, Exception exception);
+
+            #region Trace
+
+            /// <summary>
+            /// Log a message object with the <see cref="LogLevel.Trace"/> level.
+            /// </summary>
+            /// <param name="message">The message object to log.</param>
+            public virtual void Trace(object message)
+            {
+                if (IsTraceEnabled)
+                    Write(LogLevel.Trace, message, null);
+            }
+
+            /// <summary>
+            /// Log a message object with the <see cref="LogLevel.Trace"/> level including
+            /// the stack trace of the <see cref="Exception"/> passed
+            /// as a parameter.
+            /// </summary>
+            /// <param name="message">The message object to log.</param>
+            /// <param name="exception">The exception to log, including its stack trace.</param>
+            public virtual void Trace(object message, Exception exception)
+            {
+                if (IsTraceEnabled)
+                    Write(LogLevel.Trace, message, exception);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Trace"/> level.
+            /// </summary>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="args"></param>
+            public virtual void TraceFormat(IFormatProvider formatProvider, string format, params object[] args)
+            {
+                if (IsTraceEnabled)
+                    Write(LogLevel.Trace, new StringFormatFormattedMessage(formatProvider, format, args), null);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Trace"/> level.
+            /// </summary>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="exception">The exception to log.</param>
+            /// <param name="args"></param>
+            public virtual void TraceFormat(IFormatProvider formatProvider, string format, Exception exception, params object[] args)
+            {
+                if (IsTraceEnabled)
+                    Write(LogLevel.Trace, new StringFormatFormattedMessage(formatProvider, format, args), exception);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Trace"/> level.
+            /// </summary>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="args">the list of format arguments</param>
+            public virtual void TraceFormat(string format, params object[] args)
+            {
+                if (IsTraceEnabled)
+                    Write(LogLevel.Trace, new StringFormatFormattedMessage(null, format, args), null);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Trace"/> level.
+            /// </summary>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="exception">The exception to log.</param>
+            /// <param name="args">the list of format arguments</param>
+            public virtual void TraceFormat(string format, Exception exception, params object[] args)
+            {
+                if (IsTraceEnabled)
+                    Write(LogLevel.Trace, new StringFormatFormattedMessage(null, format, args), exception);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Trace"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            public virtual void Trace(Action<FormatMessageHandler> formatMessageCallback)
+            {
+                if (IsTraceEnabled)
+                    Write(LogLevel.Trace, new FormatMessageCallbackFormattedMessage(formatMessageCallback), null);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Trace"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            /// <param name="exception">The exception to log, including its stack trace.</param>
+            public virtual void Trace(Action<FormatMessageHandler> formatMessageCallback, Exception exception)
+            {
+                if (IsTraceEnabled)
+                    Write(LogLevel.Trace, new FormatMessageCallbackFormattedMessage(formatMessageCallback), exception);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Trace"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            public virtual void Trace(IFormatProvider formatProvider, Action<FormatMessageHandler> formatMessageCallback)
+            {
+                if (IsTraceEnabled)
+                    Write(LogLevel.Trace, new FormatMessageCallbackFormattedMessage(formatProvider, formatMessageCallback), null);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Trace"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            /// <param name="exception">The exception to log, including its stack trace.</param>
+            public virtual void Trace(IFormatProvider formatProvider, Action<FormatMessageHandler> formatMessageCallback, Exception exception)
+            {
+                if (IsTraceEnabled)
+                    Write(LogLevel.Trace, new FormatMessageCallbackFormattedMessage(formatProvider, formatMessageCallback), exception);
+            }
+
+            #endregion
+
+            #region Debug
+
+            /// <summary>
+            /// Log a message object with the <see cref="LogLevel.Debug"/> level.
+            /// </summary>
+            /// <param name="message">The message object to log.</param>
+            public virtual void Debug(object message)
+            {
+                if (IsDebugEnabled)
+                    Write(LogLevel.Debug, message, null);
+            }
+
+            /// <summary>
+            /// Log a message object with the <see cref="LogLevel.Debug"/> level including
+            /// the stack Debug of the <see cref="Exception"/> passed
+            /// as a parameter.
+            /// </summary>
+            /// <param name="message">The message object to log.</param>
+            /// <param name="exception">The exception to log, including its stack Debug.</param>
+            public virtual void Debug(object message, Exception exception)
+            {
+                if (IsDebugEnabled)
+                    Write(LogLevel.Debug, message, exception);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Debug"/> level.
+            /// </summary>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="args"></param>
+            public virtual void DebugFormat(IFormatProvider formatProvider, string format, params object[] args)
+            {
+                if (IsDebugEnabled)
+                    Write(LogLevel.Debug, new StringFormatFormattedMessage(formatProvider, format, args), null);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Debug"/> level.
+            /// </summary>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="exception">The exception to log.</param>
+            /// <param name="args"></param>
+            public virtual void DebugFormat(IFormatProvider formatProvider, string format, Exception exception, params object[] args)
+            {
+                if (IsDebugEnabled)
+                    Write(LogLevel.Debug, new StringFormatFormattedMessage(formatProvider, format, args), exception);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Debug"/> level.
+            /// </summary>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="args">the list of format arguments</param>
+            public virtual void DebugFormat(string format, params object[] args)
+            {
+                if (IsDebugEnabled)
+                    Write(LogLevel.Debug, new StringFormatFormattedMessage(null, format, args), null);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Debug"/> level.
+            /// </summary>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="exception">The exception to log.</param>
+            /// <param name="args">the list of format arguments</param>
+            public virtual void DebugFormat(string format, Exception exception, params object[] args)
+            {
+                if (IsDebugEnabled)
+                    Write(LogLevel.Debug, new StringFormatFormattedMessage(null, format, args), exception);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Debug"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            public virtual void Debug(Action<FormatMessageHandler> formatMessageCallback)
+            {
+                if (IsDebugEnabled)
+                    Write(LogLevel.Debug, new FormatMessageCallbackFormattedMessage(formatMessageCallback), null);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Debug"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            /// <param name="exception">The exception to log, including its stack Debug.</param>
+            public virtual void Debug(Action<FormatMessageHandler> formatMessageCallback, Exception exception)
+            {
+                if (IsDebugEnabled)
+                    Write(LogLevel.Debug, new FormatMessageCallbackFormattedMessage(formatMessageCallback), exception);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Debug"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            public virtual void Debug(IFormatProvider formatProvider, Action<FormatMessageHandler> formatMessageCallback)
+            {
+                if (IsDebugEnabled)
+                    Write(LogLevel.Debug, new FormatMessageCallbackFormattedMessage(formatProvider, formatMessageCallback), null);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Debug"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            /// <param name="exception">The exception to log, including its stack Debug.</param>
+            public virtual void Debug(IFormatProvider formatProvider, Action<FormatMessageHandler> formatMessageCallback, Exception exception)
+            {
+                if (IsDebugEnabled)
+                    Write(LogLevel.Debug, new FormatMessageCallbackFormattedMessage(formatProvider, formatMessageCallback), exception);
+            }
+
+            #endregion
+
+            #region Info
+
+            /// <summary>
+            /// Log a message object with the <see cref="LogLevel.Info"/> level.
+            /// </summary>
+            /// <param name="message">The message object to log.</param>
+            public virtual void Info(object message)
+            {
+                if (IsInfoEnabled)
+                    Write(LogLevel.Info, message, null);
+            }
+
+            /// <summary>
+            /// Log a message object with the <see cref="LogLevel.Info"/> level including
+            /// the stack Info of the <see cref="Exception"/> passed
+            /// as a parameter.
+            /// </summary>
+            /// <param name="message">The message object to log.</param>
+            /// <param name="exception">The exception to log, including its stack Info.</param>
+            public virtual void Info(object message, Exception exception)
+            {
+                if (IsInfoEnabled)
+                    Write(LogLevel.Info, message, exception);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Info"/> level.
+            /// </summary>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="args"></param>
+            public virtual void InfoFormat(IFormatProvider formatProvider, string format, params object[] args)
+            {
+                if (IsInfoEnabled)
+                    Write(LogLevel.Info, new StringFormatFormattedMessage(formatProvider, format, args), null);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Info"/> level.
+            /// </summary>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="exception">The exception to log.</param>
+            /// <param name="args"></param>
+            public virtual void InfoFormat(IFormatProvider formatProvider, string format, Exception exception, params object[] args)
+            {
+                if (IsInfoEnabled)
+                    Write(LogLevel.Info, new StringFormatFormattedMessage(formatProvider, format, args), exception);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Info"/> level.
+            /// </summary>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="args">the list of format arguments</param>
+            public virtual void InfoFormat(string format, params object[] args)
+            {
+                if (IsInfoEnabled)
+                    Write(LogLevel.Info, new StringFormatFormattedMessage(null, format, args), null);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Info"/> level.
+            /// </summary>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="exception">The exception to log.</param>
+            /// <param name="args">the list of format arguments</param>
+            public virtual void InfoFormat(string format, Exception exception, params object[] args)
+            {
+                if (IsInfoEnabled)
+                    Write(LogLevel.Info, new StringFormatFormattedMessage(null, format, args), exception);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Info"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            public virtual void Info(Action<FormatMessageHandler> formatMessageCallback)
+            {
+                if (IsInfoEnabled)
+                    Write(LogLevel.Info, new FormatMessageCallbackFormattedMessage(formatMessageCallback), null);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Info"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            /// <param name="exception">The exception to log, including its stack Info.</param>
+            public virtual void Info(Action<FormatMessageHandler> formatMessageCallback, Exception exception)
+            {
+                if (IsInfoEnabled)
+                    Write(LogLevel.Info, new FormatMessageCallbackFormattedMessage(formatMessageCallback), exception);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Info"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            public virtual void Info(IFormatProvider formatProvider, Action<FormatMessageHandler> formatMessageCallback)
+            {
+                if (IsInfoEnabled)
+                    Write(LogLevel.Info, new FormatMessageCallbackFormattedMessage(formatProvider, formatMessageCallback), null);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Info"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            /// <param name="exception">The exception to log, including its stack Info.</param>
+            public virtual void Info(IFormatProvider formatProvider, Action<FormatMessageHandler> formatMessageCallback, Exception exception)
+            {
+                if (IsInfoEnabled)
+                    Write(LogLevel.Info, new FormatMessageCallbackFormattedMessage(formatProvider, formatMessageCallback), exception);
+            }
+
+            #endregion
+
+            #region Warn
+
+            /// <summary>
+            /// Log a message object with the <see cref="LogLevel.Warn"/> level.
+            /// </summary>
+            /// <param name="message">The message object to log.</param>
+            public virtual void Warn(object message)
+            {
+                if (IsWarnEnabled)
+                    Write(LogLevel.Warn, message, null);
+            }
+
+            /// <summary>
+            /// Log a message object with the <see cref="LogLevel.Warn"/> level including
+            /// the stack Warn of the <see cref="Exception"/> passed
+            /// as a parameter.
+            /// </summary>
+            /// <param name="message">The message object to log.</param>
+            /// <param name="exception">The exception to log, including its stack Warn.</param>
+            public virtual void Warn(object message, Exception exception)
+            {
+                if (IsWarnEnabled)
+                    Write(LogLevel.Warn, message, exception);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Warn"/> level.
+            /// </summary>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting Warnrmation.</param>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="args"></param>
+            public virtual void WarnFormat(IFormatProvider formatProvider, string format, params object[] args)
+            {
+                if (IsWarnEnabled)
+                    Write(LogLevel.Warn, new StringFormatFormattedMessage(formatProvider, format, args), null);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Warn"/> level.
+            /// </summary>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting Warnrmation.</param>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="exception">The exception to log.</param>
+            /// <param name="args"></param>
+            public virtual void WarnFormat(IFormatProvider formatProvider, string format, Exception exception, params object[] args)
+            {
+                if (IsWarnEnabled)
+                    Write(LogLevel.Warn, new StringFormatFormattedMessage(formatProvider, format, args), exception);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Warn"/> level.
+            /// </summary>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="args">the list of format arguments</param>
+            public virtual void WarnFormat(string format, params object[] args)
+            {
+                if (IsWarnEnabled)
+                    Write(LogLevel.Warn, new StringFormatFormattedMessage(null, format, args), null);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Warn"/> level.
+            /// </summary>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="exception">The exception to log.</param>
+            /// <param name="args">the list of format arguments</param>
+            public virtual void WarnFormat(string format, Exception exception, params object[] args)
+            {
+                if (IsWarnEnabled)
+                    Write(LogLevel.Warn, new StringFormatFormattedMessage(null, format, args), exception);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Warn"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            public virtual void Warn(Action<FormatMessageHandler> formatMessageCallback)
+            {
+                if (IsWarnEnabled)
+                    Write(LogLevel.Warn, new FormatMessageCallbackFormattedMessage(formatMessageCallback), null);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Warn"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            /// <param name="exception">The exception to log, including its stack Warn.</param>
+            public virtual void Warn(Action<FormatMessageHandler> formatMessageCallback, Exception exception)
+            {
+                if (IsWarnEnabled)
+                    Write(LogLevel.Warn, new FormatMessageCallbackFormattedMessage(formatMessageCallback), exception);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Warn"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            public virtual void Warn(IFormatProvider formatProvider, Action<FormatMessageHandler> formatMessageCallback)
+            {
+                if (IsWarnEnabled)
+                    Write(LogLevel.Warn, new FormatMessageCallbackFormattedMessage(formatProvider, formatMessageCallback), null);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Warn"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            /// <param name="exception">The exception to log, including its stack Warn.</param>
+            public virtual void Warn(IFormatProvider formatProvider, Action<FormatMessageHandler> formatMessageCallback, Exception exception)
+            {
+                if (IsWarnEnabled)
+                    Write(LogLevel.Warn, new FormatMessageCallbackFormattedMessage(formatProvider, formatMessageCallback), exception);
+            }
+
+            #endregion
+
+            #region Error
+
+            /// <summary>
+            /// Log a message object with the <see cref="LogLevel.Error"/> level.
+            /// </summary>
+            /// <param name="message">The message object to log.</param>
+            public virtual void Error(object message)
+            {
+                if (IsErrorEnabled)
+                    Write(LogLevel.Error, message, null);
+            }
+
+            /// <summary>
+            /// Log a message object with the <see cref="LogLevel.Error"/> level including
+            /// the stack Error of the <see cref="Exception"/> passed
+            /// as a parameter.
+            /// </summary>
+            /// <param name="message">The message object to log.</param>
+            /// <param name="exception">The exception to log, including its stack Error.</param>
+            public virtual void Error(object message, Exception exception)
+            {
+                if (IsErrorEnabled)
+                    Write(LogLevel.Error, message, exception);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Error"/> level.
+            /// </summary>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting Errorrmation.</param>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="args"></param>
+            public virtual void ErrorFormat(IFormatProvider formatProvider, string format, params object[] args)
+            {
+                if (IsErrorEnabled)
+                    Write(LogLevel.Error, new StringFormatFormattedMessage(formatProvider, format, args), null);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Error"/> level.
+            /// </summary>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting Errorrmation.</param>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="exception">The exception to log.</param>
+            /// <param name="args"></param>
+            public virtual void ErrorFormat(IFormatProvider formatProvider, string format, Exception exception, params object[] args)
+            {
+                if (IsErrorEnabled)
+                    Write(LogLevel.Error, new StringFormatFormattedMessage(formatProvider, format, args), exception);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Error"/> level.
+            /// </summary>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="args">the list of format arguments</param>
+            public virtual void ErrorFormat(string format, params object[] args)
+            {
+                if (IsErrorEnabled)
+                    Write(LogLevel.Error, new StringFormatFormattedMessage(null, format, args), null);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Error"/> level.
+            /// </summary>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="exception">The exception to log.</param>
+            /// <param name="args">the list of format arguments</param>
+            public virtual void ErrorFormat(string format, Exception exception, params object[] args)
+            {
+                if (IsErrorEnabled)
+                    Write(LogLevel.Error, new StringFormatFormattedMessage(null, format, args), exception);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Error"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            public virtual void Error(Action<FormatMessageHandler> formatMessageCallback)
+            {
+                if (IsErrorEnabled)
+                    Write(LogLevel.Error, new FormatMessageCallbackFormattedMessage(formatMessageCallback), null);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Error"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            /// <param name="exception">The exception to log, including its stack Error.</param>
+            public virtual void Error(Action<FormatMessageHandler> formatMessageCallback, Exception exception)
+            {
+                if (IsErrorEnabled)
+                    Write(LogLevel.Error, new FormatMessageCallbackFormattedMessage(formatMessageCallback), exception);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Error"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            public virtual void Error(IFormatProvider formatProvider, Action<FormatMessageHandler> formatMessageCallback)
+            {
+                if (IsErrorEnabled)
+                    Write(LogLevel.Error, new FormatMessageCallbackFormattedMessage(formatProvider, formatMessageCallback), null);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Error"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            /// <param name="exception">The exception to log, including its stack Error.</param>
+            public virtual void Error(IFormatProvider formatProvider, Action<FormatMessageHandler> formatMessageCallback, Exception exception)
+            {
+                if (IsErrorEnabled)
+                    Write(LogLevel.Error, new FormatMessageCallbackFormattedMessage(formatProvider, formatMessageCallback), exception);
+            }
+
+            #endregion
+
+            #region Fatal
+
+            /// <summary>
+            /// Log a message object with the <see cref="LogLevel.Fatal"/> level.
+            /// </summary>
+            /// <param name="message">The message object to log.</param>
+            public virtual void Fatal(object message)
+            {
+                if (IsFatalEnabled)
+                    Write(LogLevel.Fatal, message, null);
+            }
+
+            /// <summary>
+            /// Log a message object with the <see cref="LogLevel.Fatal"/> level including
+            /// the stack Fatal of the <see cref="Exception"/> passed
+            /// as a parameter.
+            /// </summary>
+            /// <param name="message">The message object to log.</param>
+            /// <param name="exception">The exception to log, including its stack Fatal.</param>
+            public virtual void Fatal(object message, Exception exception)
+            {
+                if (IsFatalEnabled)
+                    Write(LogLevel.Fatal, message, exception);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Fatal"/> level.
+            /// </summary>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting Fatalrmation.</param>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="args"></param>
+            public virtual void FatalFormat(IFormatProvider formatProvider, string format, params object[] args)
+            {
+                if (IsFatalEnabled)
+                    Write(LogLevel.Fatal, new StringFormatFormattedMessage(formatProvider, format, args), null);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Fatal"/> level.
+            /// </summary>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting Fatalrmation.</param>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="exception">The exception to log.</param>
+            /// <param name="args"></param>
+            public virtual void FatalFormat(IFormatProvider formatProvider, string format, Exception exception, params object[] args)
+            {
+                if (IsFatalEnabled)
+                    Write(LogLevel.Fatal, new StringFormatFormattedMessage(formatProvider, format, args), exception);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Fatal"/> level.
+            /// </summary>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="args">the list of format arguments</param>
+            public virtual void FatalFormat(string format, params object[] args)
+            {
+                if (IsFatalEnabled)
+                    Write(LogLevel.Fatal, new StringFormatFormattedMessage(null, format, args), null);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Fatal"/> level.
+            /// </summary>
+            /// <param name="format">The format of the message object to log.<see cref="string.Format(string,object[])"/> </param>
+            /// <param name="exception">The exception to log.</param>
+            /// <param name="args">the list of format arguments</param>
+            public virtual void FatalFormat(string format, Exception exception, params object[] args)
+            {
+                if (IsFatalEnabled)
+                    Write(LogLevel.Fatal, new StringFormatFormattedMessage(null, format, args), exception);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Fatal"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            public virtual void Fatal(Action<FormatMessageHandler> formatMessageCallback)
+            {
+                if (IsFatalEnabled)
+                    Write(LogLevel.Fatal, new FormatMessageCallbackFormattedMessage(formatMessageCallback), null);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Fatal"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            /// <param name="exception">The exception to log, including its stack Fatal.</param>
+            public virtual void Fatal(Action<FormatMessageHandler> formatMessageCallback, Exception exception)
+            {
+                if (IsFatalEnabled)
+                    Write(LogLevel.Fatal, new FormatMessageCallbackFormattedMessage(formatMessageCallback), exception);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Fatal"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            public virtual void Fatal(IFormatProvider formatProvider, Action<FormatMessageHandler> formatMessageCallback)
+            {
+                if (IsFatalEnabled)
+                    Write(LogLevel.Fatal, new FormatMessageCallbackFormattedMessage(formatProvider, formatMessageCallback), null);
+            }
+
+            /// <summary>
+            /// Log a message with the <see cref="LogLevel.Fatal"/> level using a callback to obtain the message
+            /// </summary>
+            /// <remarks>
+            /// Using this method avoids the cost of creating a message and evaluating message arguments 
+            /// that probably won't be logged due to loglevel settings.
+            /// </remarks>
+            /// <param name="formatProvider">An <see cref="IFormatProvider"/> that supplies culture-specific formatting information.</param>
+            /// <param name="formatMessageCallback">A callback used by the logger to obtain the message if log level is matched</param>
+            /// <param name="exception">The exception to log, including its stack Fatal.</param>
+            public virtual void Fatal(IFormatProvider formatProvider, Action<FormatMessageHandler> formatMessageCallback, Exception exception)
+            {
+                if (IsFatalEnabled)
+                    Write(LogLevel.Fatal, new FormatMessageCallbackFormattedMessage(formatProvider, formatMessageCallback), exception);
+            }
+
+            #endregion
+        }
+
+
+        public enum LogLevel
+        {
+            /// <summary>
+            /// All logging levels
+            /// </summary>
+            All = 0,
+            /// <summary>
+            /// A trace logging level
+            /// </summary>
+            Trace = 1,
+            /// <summary>
+            /// A debug logging level
+            /// </summary>
+            Debug = 2,
+            /// <summary>
+            /// A info logging level
+            /// </summary>
+            Info = 3,
+            /// <summary>
+            /// A warn logging level
+            /// </summary>
+            Warn = 4,
+            /// <summary>
+            /// An error logging level
+            /// </summary>
+            Error = 5,
+            /// <summary>
+            /// A fatal logging level
+            /// </summary>
+            Fatal = 6,
+            /// <summary>
+            /// Do not log anything.
+            /// </summary>
+            Off = 7,
+        }
+        public abstract class AbstractCachingLoggerFactoryAdapter
+        {
+            private readonly ConcurrentDictionary<string, ILog> _cachedLoggers;
+
+            protected AbstractCachingLoggerFactoryAdapter()
+            {
+                _cachedLoggers = new ConcurrentDictionary<string, ILog>(StringComparer.OrdinalIgnoreCase);
+            }
+
+            /// <summary>
+            /// Purges all loggers from cache
+            /// </summary>
+            protected void ClearLoggerCache()
+            {
+                lock (_cachedLoggers)
+                {
+                    _cachedLoggers.Clear();
+                }
+            }
+
+            /// <summary>
+            /// Create the specified named logger instance
+            /// </summary>
+            /// <remarks>
+            /// Derived factories need to implement this method to create the
+            /// actual logger instance.
+            /// </remarks>
+            protected abstract ILog CreateLogger(string name);
+
+            #region ILoggerFactoryAdapter Members
+            /// <summary>
+            /// Get a ILog instance by <see cref="Type" />.
+            /// </summary>
+            /// <param name="type">Usually the <see cref="Type" /> of the current class.</param>
+            /// <returns>
+            /// An ILog instance either obtained from the internal cache or created by a call to <see cref="CreateLogger"/>.
+            /// </returns>
+            public ILog GetLogger(Type type)
+            {
+                return GetLoggerInternal(type.FullName);
+            }
+
+            /// <summary>
+            /// Get a ILog instance by name.
+            /// </summary>
+            /// <param name="name">Usually a <see cref="Type" />'s Name or FullName property.</param>
+            /// <returns>
+            /// An ILog instance either obtained from the internal cache or created by a call to <see cref="CreateLogger"/>.
+            /// </returns>
+            public ILog GetLogger(string name)
+            {
+                return GetLoggerInternal(name);
+            }
+
+            /// <summary>
+            /// Get or create a ILog instance by name.
+            /// </summary>
+            /// <param name="name">Usually a <see cref="Type" />'s Name or FullName property.</param>
+            /// <returns>
+            /// An ILog instance either obtained from the internal cache or created by a call to <see cref="CreateLogger"/>.
+            /// </returns>
+            private ILog GetLoggerInternal(string name)
+            {
+                return _cachedLoggers.GetOrAdd(name, CreateLogger);
+            }
+
+            #endregion
+        }
+        public abstract class AbstractSimpleLoggerFactoryAdapter : AbstractCachingLoggerFactoryAdapter
+        {
+            private LogLevel _level;
+            private bool _showLevel;
+            private bool _showDateTime;
+            private bool _showLogName;
+            private string _dateTimeFormat;
+
+            /// <summary>
+            /// The default <see cref="LogLevel"/> to use when creating new <see cref="ILog"/> instances.
+            /// </summary>
+
+            public LogLevel Level
+            {
+                get { return _level; }
+                set { _level = value; }
+            }
+
+
+
+            /// <summary>
+            /// Create the specified logger instance
+            /// </summary>
+            protected override ILog CreateLogger(string name)
+            {
+                return CreateLogger(name, _level, _showLevel, _showDateTime, _showLogName, _dateTimeFormat);
+            }
+
+            /// <summary>
+            /// Derived factories need to implement this method to create the
+            /// actual logger instance.
+            /// </summary>
+            /// <returns>a new logger instance. Must never be <c>null</c>!</returns>
+            protected abstract ILog CreateLogger(string name, LogLevel level, bool showLevel, bool showDateTime, bool showLogName, string dateTimeFormat);
+        }
+
+        public class RollingFileFactoryAdapter : AbstractSimpleLoggerFactoryAdapter
+        {
+            protected override ILog CreateLogger(string name, LogLevel level, bool showLevel, bool showDateTime, bool showLogName, string dateTimeFormat)
+            {
+                return null;
+            }
+        }
+
+        public static class LogManager
+        {
+            private static volatile RollingFileFactoryAdapter _adapter;
+            private static readonly object _loadLock = new object();
+
+
+            public static void Reset()
+            {
+                lock (_loadLock)
+                {
+                    _adapter = null;
+                }
+            }
+            /// <summary>
+            /// Gets or sets the adapter.
+            /// </summary>
+            /// <value>The adapter.</value>
+            public static RollingFileFactoryAdapter Adapter
+            {
+                get
+                {
+                    if (_adapter == null)
+                    {
+                        lock (_loadLock)
+                        {
+                            if (_adapter == null)
+                            {
+                                _adapter = new RollingFileFactoryAdapter();
+                            }
+                        }
+                    }
+                    return _adapter;
+                }
+                set
+                {
+                    if (value == null)
+                    {
+                        throw new ArgumentNullException("Adapter");
+                    }
+
+                    lock (_loadLock)
+                    {
+                        _adapter = value;
+                    }
+                }
+            }
+
+            /// <summary>
+            /// Gets the logger by calling <see cref="ILoggerFactoryAdapter.GetLogger(Type)"/>
+            /// on the currently configured <see cref="Adapter"/> using the type of the calling class.
+            /// </summary>
+            /// <remarks>
+            /// This method needs to inspect the <see cref="StackTrace"/> in order to determine the calling 
+            /// class. This of course comes with a performance penalty, thus you shouldn't call it too
+            /// often in your application.
+            /// </remarks>
+            /// <seealso cref="GetLogger(Type)"/>
+            /// <returns>the logger instance obtained from the current <see cref="Adapter"/></returns>
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            public static ILog GetCurrentClassLogger()
+            {
+                StackFrame frame = new StackFrame(1, false);
+                return Adapter.GetLogger(frame.GetMethod().ReflectedType);
+            }
+
+            /// <summary>
+            /// Gets the logger by calling <see cref="ILoggerFactoryAdapter.GetLogger(Type)"/>
+            /// on the currently configured <see cref="Adapter"/> using the specified type.
+            /// </summary>
+            /// <returns>the logger instance obtained from the current <see cref="Adapter"/></returns>
+            public static ILog GetLogger<T>()
+            {
+                return Adapter.GetLogger(typeof(T));
+            }
+
+            /// <summary>
+            /// Gets the logger by calling <see cref="ILoggerFactoryAdapter.GetLogger(Type)"/>
+            /// on the currently configured <see cref="Adapter"/> using the specified type.
+            /// </summary>
+            /// <param name="type">The type.</param>
+            /// <returns>the logger instance obtained from the current <see cref="Adapter"/></returns>
+            public static ILog GetLogger(Type type)
+            {
+                return Adapter.GetLogger(type);
+            }
+
+
+            /// <summary>
+            /// Gets the logger by calling <see cref="ILoggerFactoryAdapter.GetLogger(string)"/>
+            /// on the currently configured <see cref="Adapter"/> using the specified name.
+            /// </summary>
+            /// <param name="name">The name.</param>
+            /// <returns>the logger instance obtained from the current <see cref="Adapter"/></returns>
+            public static ILog GetLogger(string name)
+            {
+                return Adapter.GetLogger(name);
+            }
+
+
+        }
+        public static class ArgUtils
+        {
+            /// <summary>
+            /// A delegate converting a string representation into the target type
+            /// </summary>
+            public delegate T ParseHandler<T>(string strValue);
+
+            private static readonly Hashtable s_parsers;
+
+            /// <summary>
+            /// Initialize all members before any of this class' methods can be accessed (avoids beforeFieldInit)
+            /// </summary>
+            static ArgUtils()
+            {
+                s_parsers = new Hashtable();
+                RegisterTypeParser<bool>(delegate (string s) { return Convert.ToBoolean(s); });
+                RegisterTypeParser<short>(delegate (string s) { return Convert.ToInt16(s); });
+                RegisterTypeParser<int>(delegate (string s) { return Convert.ToInt32(s); });
+                RegisterTypeParser<long>(delegate (string s) { return Convert.ToInt64(s); });
+                RegisterTypeParser<float>(delegate (string s) { return Convert.ToSingle(s); });
+                RegisterTypeParser<double>(delegate (string s) { return Convert.ToDouble(s); });
+                RegisterTypeParser<decimal>(delegate (string s) { return Convert.ToDecimal(s); });
+            }
+
+            /// <summary>
+            /// Adds the parser to the list of known type parsers.
+            /// </summary>
+            /// <remarks>
+            /// .NET intrinsic types are pre-registerd: short, int, long, float, double, decimal, bool
+            /// </remarks>
+            public static void RegisterTypeParser<T>(ParseHandler<T> parser)
+            {
+                s_parsers[typeof(T)] = parser;
+            }
+
+            /// <summary>
+            /// Retrieves the named value from the specified <see cref="NameValueCollection"/>.
+            /// </summary>
+            /// <param name="values">may be null</param>
+            /// <param name="name">the value's key</param>
+            /// <returns>if <paramref name="values"/> is not null, the value returned by values[name]. <c>null</c> otherwise.</returns>
+            public static string GetValue(NameValueCollection values, string name)
+            {
+                return GetValue(values, name, null);
+            }
+
+            /// <summary>
+            /// Retrieves the named value from the specified <see cref="NameValueCollection"/>.
+            /// </summary>
+            /// <param name="values">may be null</param>
+            /// <param name="name">the value's key</param>
+            /// <param name="defaultValue">the default value, if not found</param>
+            /// <returns>if <paramref name="values"/> is not null, the value returned by values[name]. <c>null</c> otherwise.</returns>
+            public static string GetValue(NameValueCollection values, string name, string defaultValue)
+            {
+                if (values != null)
+                {
+                    foreach (string key in values.AllKeys)
+                    {
+                        if (String.Compare(name, key, System.StringComparison.OrdinalIgnoreCase) == 0)
+                        {
+                            return values[name];
+                        }
+                    }
+                }
+                return defaultValue;
+            }
+
+            /// <summary>
+            /// Returns the first nonnull, nonempty value among its arguments.
+            /// </summary>
+            /// <remarks>
+            /// Returns <c>null</c>, if the initial list was null or empty.
+            /// </remarks>
+            /// <seealso cref="Coalesce{T}"/>
+            public static string Coalesce(params string[] values)
+            {
+                return Coalesce(delegate (string v) { return !string.IsNullOrEmpty(v); }, values);
+            }
+
+            /// <summary>
+            /// Returns the first nonnull, nonempty value among its arguments.
+            /// </summary>
+            /// <remarks>
+            /// Also 
+            /// </remarks>
+            public static T Coalesce<T>(Predicate<T> predicate, params T[] values) where T : class
+            {
+                if (values == null || values.Length == 0)
+                {
+                    return null;
+                }
+
+                if (predicate == null)
+                {
+                    predicate = delegate (T v) { return v != null; };
+                }
+
+                for (int i = 0; i < values.Length; i++)
+                {
+                    T val = values[i];
+                    if (predicate(val))
+                    {
+                        return val;
+                    }
+                }
+                return null;
+            }
+
+            /// <summary>
+            /// Tries parsing <paramref name="stringValue"/> into an enum of the type of <paramref name="defaultValue"/>.
+            /// </summary>
+            /// <param name="defaultValue">the default value to return if parsing fails</param>
+            /// <param name="stringValue">the string value to parse</param>
+            /// <returns>the successfully parsed value, <paramref name="defaultValue"/> otherwise.</returns>
+            public static T TryParseEnum<T>(T defaultValue, string stringValue) where T : struct
+            {
+                if (!typeof(T).IsEnum)
+                {
+                    throw new ArgumentException(string.Format("Type '{0}' is not an enum type", typeof(T).FullName));
+                }
+
+                T result = defaultValue;
+                if (string.IsNullOrEmpty(stringValue))
+                {
+                    return defaultValue;
+                }
+                try
+                {
+                    result = (T)Enum.Parse(typeof(T), stringValue, true);
+                }
+                catch
+                {
+                    Trace.WriteLine(string.Format("WARN: failed converting value '{0}' to enum type '{1}'", stringValue, defaultValue.GetType().FullName));
+                }
+                return result;
+            }
+
+            /// <summary>
+            /// Tries parsing <paramref name="stringValue"/> into the specified return type.
+            /// </summary>
+            /// <param name="defaultValue">the default value to return if parsing fails</param>
+            /// <param name="stringValue">the string value to parse</param>
+            /// <returns>the successfully parsed value, <paramref name="defaultValue"/> otherwise.</returns>
+            public static T TryParse<T>(T defaultValue, string stringValue)
+            {
+                T result = defaultValue;
+                if (string.IsNullOrEmpty(stringValue))
+                {
+                    return defaultValue;
+                }
+
+                ParseHandler<T> parser = s_parsers[typeof(T)] as ParseHandler<T>;
+                if (parser == null)
+                {
+                    throw new ArgumentException(string.Format("There is no parser registered for type {0}", typeof(T).FullName));
+                }
+
+                try
+                {
+                    result = parser(stringValue);
+                }
+                catch
+                {
+                    Trace.WriteLine(string.Format("WARN: failed converting value '{0}' to type '{1}' - returning default '{2}'", stringValue, typeof(T).FullName, result));
+                }
+                return result;
+            }
+
+            /// <summary>
+            /// Throws a <see cref="ArgumentNullException"/> if <paramref name="val"/> is <c>null</c>.
+            /// </summary>
+            public static T AssertNotNull<T>(string paramName, T val) where T : class
+            {
+                if (ReferenceEquals(val, null))
+                {
+                    throw new ArgumentNullException(paramName);
+                }
+                return val;
+            }
+
+            /// <summary>
+            /// Throws a <see cref="ArgumentNullException"/> if <paramref name="val"/> is <c>null</c>.
+            /// </summary>
+            public static T AssertNotNull<T>(string paramName, T val, string messageFormat, params object[] args) where T : class
+            {
+                if (ReferenceEquals(val, null))
+                {
+                    throw new ArgumentNullException(paramName, string.Format(messageFormat, args));
+                }
+                return val;
+            }
+
+            /// <summary>
+            /// Throws a <see cref="ArgumentOutOfRangeException"/> if an object of type <paramref name="valType"/> is not
+            /// assignable to type <typeparam name="T"></typeparam>.
+            /// </summary>
+            public static Type AssertIsAssignable<T>(string paramName, Type valType)
+            {
+                return AssertIsAssignable<T>(paramName
+                        , valType
+                        , string.Format("Type '{0}' of parameter '{1}' is not assignable to target type '{2}'"
+                            , valType == null ? "<undefined>" : valType.AssemblyQualifiedName
+                            , paramName
+                            , typeof(T).AssemblyQualifiedName)
+                    );
+            }
+
+            /// <summary>
+            /// Throws a <see cref="ArgumentOutOfRangeException"/> if an object of type <paramref name="valType"/> is not
+            /// assignable to type <typeparam name="T"></typeparam>.
+            /// </summary>
+            public static Type AssertIsAssignable<T>(string paramName, Type valType, string messageFormat, params object[] args)
+            {
+                if (valType == null)
+                {
+                    throw new ArgumentNullException("valType");
+                }
+
+                if (!typeof(T).IsAssignableFrom(valType))
+                {
+                    throw new ArgumentOutOfRangeException(paramName, valType, string.Format(messageFormat, args));
+                }
+                return valType;
+            }
+
+            /// <summary>
+            /// An anonymous action delegate with no arguments and no return value.
+            /// </summary>
+            /// <seealso cref="Guard"/>
+            public delegate void Action();
+
+            /// <summary>
+            /// Ensures any exception thrown by the given <paramref name="action"/> is wrapped with an
+            /// <see cref="ConfigurationException"/>. 
+            /// </summary>
+            /// <remarks>
+            /// If <paramref name="action"/> already throws a ConfigurationException, it will not be wrapped.
+            /// </remarks>
+            /// <param name="action">the action to execute</param>
+            /// <param name="messageFormat">the message to be set on the thrown <see cref="ConfigurationException"/></param>
+            /// <param name="args">args to be passed to <see cref="string.Format(string,object[])"/> to format the message</param>
+            public static void Guard(Action action, string messageFormat, params object[] args)
+            {
+                Guard<int>(delegate
+                {
+                    action();
+                    return 0;
+                }
+                                  , messageFormat, args);
+            }
+
+            /// <summary>
+            /// An anonymous action delegate with no arguments and no return value.
+            /// </summary>
+            /// <seealso cref="Guard{T}"/>
+            public delegate T Function<T>();
+
+            /// <summary>
+            /// Ensures any exception thrown by the given <paramref name="function"/> is wrapped with an
+            /// <see cref="ConfigurationException"/>. 
+            /// </summary>
+            /// <remarks>
+            /// If <paramref name="function"/> already throws a ConfigurationException, it will not be wrapped.
+            /// </remarks>
+            /// <param name="function">the action to execute</param>
+            /// <param name="messageFormat">the message to be set on the thrown <see cref="ConfigurationException"/></param>
+            /// <param name="args">args to be passed to <see cref="string.Format(string,object[])"/> to format the message</param>
+            public static T Guard<T>(Function<T> function, string messageFormat, params object[] args)
+            {
+                try
+                {
+                    return function();
+                }
+                catch (ConfigurationException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    throw new ConfigurationException(string.Format(messageFormat, args), ex);
+                }
+            }
+        }
+
+
         public static LogSource Default = new LogSource();
 
         /// <summary>
@@ -1676,7 +3788,7 @@ namespace Tsharp
 
             public LogSource()
             {
-                var listener = new RollingFlatFileTraceListener("App_Data/trace.log",
+                var listener = new RollingFlatFileTraceListener("App_Data/log/trace.log",
                     () => DateTimeOffset.Now.ToString("'>>'yyyy'-'MM'-'dd'T'HH':'mm':'ss.fffffffK"),
                     null, 5120, "yyyyMMddHHmm", "'archived'yyyyMMdd",
                     RollFileExistsBehavior.Increment, RollInterval.Day);
@@ -2732,6 +4844,784 @@ namespace Tsharp
             }
 
             #endregion Properties
+        }
+
+        /// <summary>
+        /// Read text based configuration file based on key value pairs.
+        /// </summary>
+        public class ConfigReader
+        {
+            /// <summary>
+            /// Hold the key value pairs.
+            /// </summary>
+            protected Dictionary<string, string> _configValues = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            /// <summary>
+            /// Occurs before a new key is added.
+            /// </summary>
+            public event EventHandler<ConfigReaderEventArgs> OnKeyAdd;
+
+            /// <summary>
+            /// Occurs before a existing key is overwritten.
+            /// </summary>
+            public event EventHandler<ConfigReaderEventArgs> OnKeyChange;
+
+            /// <summary>
+            /// Hold lines for here mode.
+            /// </summary>
+            private List<string> _here = new List<string>();
+
+            /// <summary>
+            /// Initialize a new instance.
+            /// </summary>
+            public ConfigReader()
+            { }
+
+            /// <summary>
+            /// Initialize new instance and read the configuration from file.
+            /// </summary>
+            /// <param name="filename"></param>
+            public ConfigReader(string filename)
+            {
+                if (String.IsNullOrEmpty(filename))
+                {
+                    throw new ArgumentNullException(filename);
+                }
+                Open(filename);
+            }
+
+            /// <summary>
+            /// Initialize new instance and read from stream.
+            /// </summary>
+            /// <param name="stream"></param>
+            public ConfigReader(Stream stream)
+            {
+                if (stream == null)
+                    throw new ArgumentException("stream");
+
+                Open(stream);
+            }
+
+            /// <summary>
+            /// Open configuration file and clear existing values.
+            /// </summary>
+            /// <param name="filename"></param>
+            public void Open(string filename)
+            {
+                if (!File.Exists(filename))
+                    throw new FileNotFoundException("File not found.", filename);
+
+                _configValues.Clear();
+
+                Parse(() => File.OpenRead(filename));
+            }
+
+            /// <summary>
+            /// Read stream and clear existing values.
+            /// </summary>
+            /// <param name="stream"></param>
+            public void Open(Stream stream)
+            {
+                if (stream == null)
+                    throw new ArgumentException("stream");
+
+                _configValues.Clear();
+
+                using (var ms = new MemoryStream())
+                {
+                    stream.CopyTo(ms);
+                    ms.Position = 0;
+
+                    Parse(() => ms);
+                }
+            }
+
+            /// <summary>
+            /// Open configuration file and add values.
+            /// </summary>
+            /// <param name="filename"></param>
+            public void Append(string filename)
+            {
+                if (!File.Exists(filename))
+                    throw new FileNotFoundException("File not found.", filename);
+
+                Parse(() => File.OpenRead(filename));
+            }
+
+            /// <summary>
+            /// Read stream and add values.
+            /// </summary>
+            /// <param name="stream"></param>
+            public void Append(Stream stream)
+            {
+                if (stream == null)
+                    throw new ArgumentException("stream");
+
+                using (var ms = new MemoryStream())
+                {
+                    stream.CopyTo(ms);
+                    ms.Position = 0;
+
+                    Parse(() => ms);
+                }
+            }
+
+            /// <summary>
+            /// Read all lines from stream.
+            /// </summary>
+            /// <param name="streamProvider"></param>
+            /// <returns></returns>
+            private IEnumerable<string> ReadAllLines(Func<Stream> streamProvider)
+            {
+                using (var stream = streamProvider())
+                {
+                    using (var reader = new StreamReader(stream))
+                    {
+                        while (!reader.EndOfStream)
+                        {
+                            yield return reader.ReadLine();
+                        }
+                    }
+                }
+            }
+
+            /// <summary>
+            /// Read a stream and parse.
+            /// </summary>
+            /// <param name="stream">The stream.</param>
+            private void Parse(Func<Stream> stream)
+            {
+                var linenumber = 0;
+                var key = "";
+                var value = "";
+                var mode = ParserMode.Normal;
+                var stop = "";
+                var literal = false;
+
+                foreach (var rawline in this.ReadAllLines(stream))
+                {
+                    linenumber++;
+
+                    var line = rawline.Trim();
+
+                    // Test for comments or empty lines and not here mode
+                    if ((line.StartsWith("#") || line.StartsWith(";") || line.Length == 0) && mode != ParserMode.Here)
+                    {
+                        continue;
+                    }
+
+                    // normal parser mode
+                    if (mode == ParserMode.Normal)
+                    {
+                        // Split to <key> = <value> pair
+                        var pair = line.Split(new char[] { '=' }, 2);
+
+                        // Test for one part
+                        if (pair.Length == 1)
+                        {
+                            throw new ConfigException(String.Format("Not a key value pair. Line {0}.", linenumber));
+                        }
+
+                        // Test for two parts
+                        if (pair.Length == 2)
+                        {
+                            key = pair[0].Trim();
+                            value = pair[1].Trim();
+
+                            if (String.IsNullOrEmpty(key))
+                            {
+                                throw new ConfigException(String.Format("The key is null. Line {0}.", linenumber));
+                            }
+
+                            // test for valid key format
+                            if (!Regex.IsMatch(key, "^@?[a-zA-Z_][a-zA-Z0-9_.]*$", RegexOptions.Singleline))
+                            {
+                                throw new ConfigException(String.Format("The format for key '{0}' is invalid. Line {1}.", key, linenumber));
+                            }
+
+                            // literal mode
+                            if (key.StartsWith("@"))
+                            {
+                                key = key.Substring(1);
+                                literal = true;
+                            }
+                        }
+
+                        // Test for here document mode sequence
+                        var inline = Regex.Match(value, "^<<([a-zA-Z][a-zA-Z0-9]*)$");
+                        if (inline.Success)
+                        {
+                            // test for literal
+                            if (literal)
+                                throw new ConfigException("Literal mode in here document not allowed.");
+
+                            // stopword
+                            stop = inline.Groups[1].Value;
+
+                            _here.Clear();
+
+                            mode = ParserMode.Here;
+                            continue;
+                        }
+                    }
+
+                    // Test, if in continuation mode
+                    if (mode == ParserMode.Continuation)
+                    {
+                        value = String.Concat(value, line);
+                    }
+
+                    // Test, if in here document mode
+                    if (mode == ParserMode.Here)
+                    {
+                        // Test for stopword.
+                        if (rawline.Equals(stop))
+                        {
+#if NET35
+						Add(key, String.Join("\n", _here.ToArray()));
+#else
+                            Add(key, String.Join("\n", _here));
+#endif
+
+                            // reset parser
+                            literal = false;
+                            mode = ParserMode.Normal;
+
+                            _here.Clear();
+
+                            continue;
+                        }
+
+                        _here.Add(rawline);
+                        continue;
+                    }
+
+                    // Test for trailing backslash (continuation mode)
+                    if (value.EndsWith("\\"))
+                    {
+                        value = value.Substring(0, value.Length - 1);
+
+                        mode = ParserMode.Continuation;
+                        continue;
+                    }
+
+                    // Test for surrounding double quotes
+                    if (value.StartsWith("\"") && value.EndsWith("\""))
+                    {
+                        value = value.Substring(1, value.Length - 2);
+                    }
+
+                    if (!literal)
+                    {
+                        // Unescape the value
+                        value = Regex.Replace(value, @"(\\(.?))", m =>
+                        {
+                            switch (m.Groups[2].Value)
+                            {
+                                case "n":
+                                    return "\n";
+
+                                case "t":
+                                    return "\t";
+
+                                case "\\":
+                                    return "\\";
+
+                                case "":
+                                    throw new ConfigException(String.Format("Empty escape sequence. Line {0}.", linenumber));
+
+                                default:
+                                    throw new ConfigException(String.Format("Unknown escape sequence: \\{0}. Line {1}.", m.Groups[2].Value, linenumber));
+                            }
+                        });
+                    }
+
+                    Add(key, value);
+
+                    // reset parser
+                    literal = false;
+                    mode = ParserMode.Normal;
+                }
+
+                if (mode != ParserMode.Normal)
+                {
+                    throw new ConfigException(String.Format("End of file encountered in {0} mode.", mode.ToString().ToLower()));
+                }
+            }
+
+            /// <summary>
+            /// Add the key and value to storage or override existing.
+            /// </summary>
+            /// <param name="key">The key.</param>
+            /// <param name="value">The value.</param>
+            private void Add(string key, string value)
+            {
+                var e = new ConfigReaderEventArgs(key, value);
+                if (!_configValues.ContainsKey(key))
+                {
+                    if (OnKeyAdd != null)
+                        OnKeyAdd(this, e);
+
+                    if (!e.Decline)
+                        _configValues.Add(key, value);
+                }
+                else
+                {
+                    if (OnKeyChange != null)
+                        OnKeyChange(this, e);
+
+                    if (!e.Decline)
+                        _configValues[key] = value;
+                }
+            }
+
+            /// <summary>
+            /// Gets the value associated with the specified key.
+            /// If the key does not exists, the default value is returned.
+            /// </summary>
+            /// <typeparam name="T">Destination type.</typeparam>
+            /// <param name="key">The key of the value to get.</param>
+            /// <param name="defaultValue">The default value if key not found.</param>
+            /// <param name="defaultIfEmpty">If value is empty, then return the default value.</param>
+            /// <returns>The value from the key, otherwise the default value.</returns>
+            public T GetValue<T>(string key, T defaultValue, bool defaultIfEmpty = false) where T : IConvertible
+            {
+                return GetValue<T>(key, defaultValue, CultureInfo.InvariantCulture, defaultIfEmpty);
+            }
+
+            /// <summary>
+            /// Gets the value associated with the specified key.
+            /// If the key does not exists, the default value is returned.
+            /// </summary>
+            /// <typeparam name="T">Destination type.</typeparam>
+            /// <param name="key">The key of the value to get.</param>
+            /// <param name="defaultValue">The default value if key not found.</param>
+            /// <param name="provider">The format provider.</param>
+            /// <param name="defaultIfEmpty">If value is empty, then return the default value.</param>
+            /// <returns>The value from the key, otherwise the default value.</returns>
+            public T GetValue<T>(string key, T defaultValue, IFormatProvider provider, bool defaultIfEmpty = false) where T : IConvertible
+            {
+                if (String.IsNullOrEmpty(key))
+                    throw new ArgumentNullException("key");
+
+                if (_configValues.ContainsKey(key))
+                {
+                    var _value = _configValues[key];
+                    if (defaultIfEmpty && String.IsNullOrEmpty(_value))
+                    {
+                        return defaultValue;
+                    }
+
+                    try
+                    {
+                        return (T)Convert.ChangeType(_value, typeof(T), provider);
+                    }
+                    catch (FormatException e)
+                    {
+                        throw new ConfigException(String.Format("Can't convert key '{0}' to destination type '{1}'.", key, typeof(T)), e);
+                    }
+                }
+                return defaultValue;
+            }
+
+            /// <summary>
+            /// Gets the value associated with the specified key.
+            /// If the key does not exists, an exception is thrown.
+            /// </summary>
+            /// <typeparam name="T">Destination type.</typeparam>
+            /// <param name="key">The key of the value to get.</param>
+            /// <param name="valueMustNotBeEmpty">If value is empty, then throw an exception.</param>
+            /// <returns>Throws an exception if the key is not found.</returns>
+            public T TryGetValue<T>(string key, bool valueMustNotBeEmpty = false) where T : IConvertible
+            {
+                return TryGetValue<T>(key, CultureInfo.InvariantCulture, valueMustNotBeEmpty);
+            }
+
+            /// <summary>
+            /// Gets the value associated with the specified key.
+            /// If the key does not exists, an exception is thrown.
+            /// </summary>
+            /// <typeparam name="T">Destination type.</typeparam>
+            /// <param name="key">The key of the value to get.</param>
+            /// <param name="provider">The format provider.</param>
+            /// <param name="valueMustNotBeEmpty">If value is empty, then throw an exception.</param>
+            /// <returns>Throws a exception if the key is not found.</returns>
+            public T TryGetValue<T>(string key, IFormatProvider provider, bool valueMustNotBeEmpty = false) where T : IConvertible
+            {
+                if (String.IsNullOrEmpty(key))
+                {
+                    throw new ArgumentNullException("key");
+                }
+
+                if (_configValues.ContainsKey(key))
+                {
+                    var _value = _configValues[key];
+                    if (valueMustNotBeEmpty && String.IsNullOrEmpty(_value))
+                    {
+                        throw new ConfigException(String.Format("The value for key '{0}' must not be empty.", key));
+                    }
+
+                    try
+                    {
+                        return (T)Convert.ChangeType(_value, typeof(T), provider);
+                    }
+                    catch (FormatException e)
+                    {
+                        throw new ConfigException(String.Format("Can't convert key '{0}' to destination type '{1}'.", key, typeof(T)), e);
+                    }
+                }
+                throw new ConfigException(String.Format("The configuration key '{0}' does not exists.", key));
+            }
+
+            /// <summary>
+            /// Gets the value associated with the specified key.
+            /// </summary>
+            /// <typeparam name="T">The destination type.</typeparam>
+            /// <param name="key">The key of the value to get.</param>
+            /// <param name="value">The value if the key is found.</param>
+            /// <param name="valueMustNotBeEmpty">If value is empty, then false is returned.</param>
+            /// <returns>Returns true if the key is found, otherwise false.</returns>
+            public bool TryGetValue<T>(string key, out T value, bool valueMustNotBeEmpty = false) where T : IConvertible
+            {
+                return TryGetValue<T>(key, out value, CultureInfo.InvariantCulture, valueMustNotBeEmpty);
+            }
+
+            /// <summary>
+            /// Gets the value associated with the specified key.
+            /// </summary>
+            /// <typeparam name="T">The destination type.</typeparam>
+            /// <param name="key">The key of the value to get.</param>
+            /// <param name="value">The value if the key is found.</param>
+            /// <param name="provider">The format provider.</param>
+            /// <param name="valueMustNotBeEmpty">If value is empty, then false is returned.</param>
+            /// <returns>Returns true if the key is found, otherwise false.</returns>
+            public bool TryGetValue<T>(string key, out T value, IFormatProvider provider, bool valueMustNotBeEmpty = false) where T : IConvertible
+            {
+                value = default(T);
+
+                if (String.IsNullOrEmpty(key))
+                {
+                    throw new ArgumentNullException("key");
+                }
+
+                if (_configValues.ContainsKey(key))
+                {
+                    var _value = _configValues[key];
+                    if (valueMustNotBeEmpty && String.IsNullOrEmpty(_value))
+                    {
+                        return false;
+                    }
+
+                    try
+                    {
+                        value = (T)Convert.ChangeType(_value, typeof(T), provider);
+                        return true;
+                    }
+                    catch (FormatException e)
+                    {
+                        throw new ConfigException(String.Format("Can't convert key '{0}' to destination type '{1}'.", key, typeof(T)), e);
+                    }
+                }
+
+                return false;
+            }
+
+            /// <summary>
+            /// Test if the key exists.
+            /// </summary>
+            /// <param name="key">The configuration key.</param>
+            /// <returns></returns>
+            public bool KeyExists(string key)
+            {
+                if (String.IsNullOrEmpty(key))
+                    throw new ArgumentNullException("key");
+
+                return _configValues.ContainsKey(key);
+            }
+
+            /// <summary>
+            /// Get all available configuration keys.
+            /// </summary>
+            /// <returns></returns>
+            public IEnumerable<string> GetKeys()
+            {
+                return _configValues.Keys;
+            }
+
+            /// <summary>
+            /// Get all available configuration values.
+            /// </summary>
+            /// <returns></returns>
+            public IEnumerable<string> GetValues()
+            {
+                return _configValues.Values;
+            }
+        }
+
+        /// <summary>
+        /// Write text based configuration file based on key value pairs.
+        /// </summary>
+        public class ConfigWriter
+        {
+            /// <summary>
+            /// Hold the key value pairs.
+            /// </summary>
+            protected Dictionary<string, string> _configValues = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            /// <summary>
+            /// Initialize new configuration writer.
+            /// </summary>
+            public ConfigWriter()
+            { }
+
+            /// <summary>
+            /// Initialize new configuration writer and read in an existing reader.
+            /// </summary>
+            /// <param name="reader">The configuration reader.</param>
+            public ConfigWriter(ConfigReader reader)
+                : this(reader, CultureInfo.InvariantCulture)
+            { }
+
+            /// <summary>
+            /// Initialize new configuration writer and read in an existing reader.
+            /// </summary>
+            /// <param name="reader">The configuration reader.</param>
+            /// <param name="provider">The format provider.</param>
+            public ConfigWriter(ConfigReader reader, IFormatProvider provider)
+            {
+                if (reader == null)
+                    throw new ArgumentNullException("reader");
+
+                if (provider == null)
+                    throw new ArgumentNullException("provider");
+
+                foreach (var key in reader.GetKeys())
+                {
+                    AddValue<string>(key, reader.GetValue<string>(key, ""), provider);
+                }
+            }
+
+            /// <summary>
+            /// Save configuration to file.
+            /// </summary>
+            /// <param name="filename">The filename.</param>
+            public void Save(string filename)
+            {
+                using (var stream = File.Open(filename, FileMode.Create, FileAccess.Write, FileShare.None))
+                {
+                    Writer(stream);
+                }
+            }
+
+            /// <summary>
+            /// Save configuration to stream.
+            /// </summary>
+            /// <param name="stream">The stream.</param>
+            public void Save(Stream stream)
+            {
+                Writer(stream);
+            }
+
+            /// <summary>
+            /// Write key value pair to stream.
+            /// </summary>
+            /// <param name="stream">The stream.</param>
+            private void Writer(Stream stream)
+            {
+                var writer = new StreamWriter(stream);
+
+                foreach (var key in _configValues.Keys)
+                {
+                    writer.WriteLine(String.Format("{0} = {1}", key, Prepare((string)_configValues[key])));
+                }
+
+                writer.Flush();
+            }
+
+            /// <summary>
+            /// Add or set a key value pair.
+            /// </summary>
+            /// <typeparam name="T">Type of value.</typeparam>
+            /// <param name="key">The key.</param>
+            /// <param name="value">The value.</param>
+            public void AddValue<T>(string key, T value) where T : IConvertible
+            {
+                AddValue<T>(key, value, CultureInfo.InvariantCulture);
+            }
+
+            /// <summary>
+            /// Add or set a key value pair.
+            /// </summary>
+            /// <typeparam name="T">Type of value.</typeparam>
+            /// <param name="key">The key.</param>
+            /// <param name="value">The value.</param>
+            /// <param name="provider">The format provider.</param>
+            public void AddValue<T>(string key, T value, IFormatProvider provider) where T : IConvertible
+            {
+                if (String.IsNullOrEmpty(key))
+                {
+                    throw new ConfigException(String.Format("The key is null or empty."));
+                }
+
+                if (!Regex.IsMatch(key, "^[a-zA-Z_][a-zA-Z0-9_.]*$", RegexOptions.Singleline))
+                {
+                    throw new ConfigException(String.Format("The format for key '{0}' is invalid.", key));
+                }
+
+                if (!_configValues.ContainsKey(key))
+                {
+                    _configValues.Add(key, String.Format(provider, "{0}", value));
+                }
+                else
+                {
+                    _configValues[key] = String.Format(provider, "{0}", value);
+                }
+            }
+
+            /// <summary>
+            /// Prepare the value for writing.
+            /// </summary>
+            /// <param name="input">The value.</param>
+            /// <returns>The prepared value.</returns>
+            private string Prepare(string input)
+            {
+                if (Char.IsWhiteSpace(input.FirstOrDefault()) || Char.IsWhiteSpace(input.LastOrDefault()))
+                {
+                    input = String.Format("\"{0}\"", input);
+                }
+
+                input = Regex.Replace(input, @"(\n|\t|\\)", m =>
+                {
+                    switch (m.Groups[1].Value)
+                    {
+                        case "\n":
+                            return "\\n";
+
+                        case "\t":
+                            return "\\t";
+
+                        case "\\":
+                            return "\\\\";
+                    }
+
+                    throw new ConfigException(String.Format("Unknown escape sequence: \\{0}.", m.Groups[1].Value));
+                });
+
+                return input;
+            }
+        }
+
+        /// <summary>
+        /// ConfigFile event args.
+        /// </summary>
+        public class ConfigReaderEventArgs : EventArgs
+        {
+            /// <summary>
+            /// Get the key.
+            /// </summary>
+            public string Key { get; private set; }
+
+            /// <summary>
+            /// Get the value.
+            /// </summary>
+            public string Value { get; private set; }
+
+            /// <summary>
+            /// Set to true to decline.
+            /// </summary>
+            public bool Decline { get; set; }
+
+            /// <summary>
+            /// Initialize new event arguments.
+            /// </summary>
+            /// <param name="key">The key.</param>
+            /// <param name="value">The value.</param>
+            /// <param name="decline">Decline value.</param>
+            public ConfigReaderEventArgs(string key, string value, bool decline = false)
+            {
+                Key = key;
+                Value = value;
+                Decline = decline;
+            }
+        }
+
+        /// <summary>
+        /// Processing modes of the parser
+        /// </summary>
+        public enum ParserMode
+        {
+            /// <summary>
+            /// Normal parsing mode.
+            /// </summary>
+            Normal,
+
+            /// <summary>
+            /// Continuation mode.
+            /// </summary>
+            Continuation,
+
+            /// <summary>
+            /// Here document mode.
+            /// </summary>
+            Here
+        }
+
+        /// <summary>
+        /// Key mode.
+        /// </summary>
+        public enum KeyMode
+        {
+            /// <summary>
+            /// Overwrite value of the existing key.
+            /// </summary>
+            Overwrite,
+
+            /// <summary>
+            /// Append value to existing key.
+            /// </summary>
+            Append,
+
+            /// <summary>
+            /// Ignore new value for existing key.
+            /// </summary>
+            Ignore
+        }
+
+        /// <summary>
+        /// This exception is thrown when an error in the ConfigFile occurs.
+        /// </summary>
+        /// <remarks>
+        /// This is the base exception for all exceptions thrown in the ConfigFile
+        /// </remarks>
+        public class ConfigException : Exception
+        {
+            /// <summary>
+            /// Initializes a new instance of the <see cref="T:CS.Helper.ConfigFileException" /> class.
+            /// </summary>
+            public ConfigException()
+                : base("ConfigFile caused an exception.")
+            { }
+
+            /// <summary>
+            /// Initializes a new instance of the <see cref="T:CS.Helper.ConfigFileException" /> class.
+            /// </summary>
+            public ConfigException(Exception ex)
+                : base("ConfigFile caused an exception.", ex)
+            { }
+
+            /// <summary>
+            /// Initializes a new instance of the <see cref="T:CS.Helper.ConfigFileException" /> class.
+            /// </summary>
+            public ConfigException(string message)
+                : base(message)
+            { }
+
+            /// <summary>
+            /// Initializes a new instance of the <see cref="T:CS.Helper.ConfigFileException" /> class.
+            /// </summary>
+            public ConfigException(string message, Exception innerException)
+                : base(message, innerException)
+            { }
         }
     }
 }
