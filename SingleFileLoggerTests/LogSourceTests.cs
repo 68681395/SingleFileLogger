@@ -24,18 +24,19 @@ namespace Tsharp
         [TestMethod]
         public void LogSourceTest()
         {
-            var source = new SimpleLogger.LogSource();
+            var source = SimpleLogger.LogManager.GetCurrentClassLogger();
             RandomStringGenerator random = new RandomStringGenerator();
 
             foreach (var i in Enumerable.Range(1, 3000))
             {
-                source.WriteLine(random.Generate(1000));
+                source.Info(random.Generate(1000));
             }
         }
 
         [TestMethod]
         public void LogSourceTest1()
         {
+            return;
             DateTimeOffset dt = DateTimeOffset.Now;
 
             //dt = dt.ToUniversalTime().ToUniversalTime().ToUniversalTime();
@@ -65,11 +66,11 @@ namespace Tsharp
 
             foreach (var i in Enumerable.Range(1, 3000))
             {
-                SimpleLogger.WriteLine(random.Generate(1000),"[INFO]");
+                SimpleLogger.LogManager.GetCurrentClassLogger().Info(random.Generate(1000));
             }
             foreach (var i in Enumerable.Range(1, 3000))
             {
-                SimpleLogger.WriteLine(random.Generate(1000), "[DEBUG]");
+                SimpleLogger.LogManager.GetCurrentClassLogger().Debug(random.Generate(1000));
             }
         }
     }

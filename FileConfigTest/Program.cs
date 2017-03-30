@@ -21,6 +21,7 @@ namespace FileConfigTest
 
         private static void GetValue(ConfigReader reader)
         {
+            Console.Clear();
             foreach (var key in reader.GetKeys())
             {
                 Console.WriteLine($"{key} = {reader.GetValue(key, "")}");
